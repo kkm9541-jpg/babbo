@@ -1,0 +1,3500 @@
+<!doctype html>
+<html lang="ko"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#07111E">
+  <title>LeakGuard — 정보보안 점검 도구</title>
+  <meta name="description" content="의심스러운 URL 구조 검사, HIBP k-Anonymity 유출 비밀번호 조회, 규칙 기반 피싱·스미싱 메시지 분석을 제공하는 한국어 보안 웹 애플리케이션">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root,
+    html[data-theme="dark-navy"] {
+      color-scheme: dark !important;
+      --bg-canvas: #07111e;
+      --bg-surface: #0d1b2e;
+      --bg-elevated: #12233b;
+      --bg-elevated-hover: #193050;
+      --header-bg: rgba(7, 17, 30, 0.92);
+      --mobile-nav-bg: rgba(9, 21, 38, 0.96);
+      --subcard-bg: rgba(7, 17, 30, 0.78);
+      --feature-hover-bg: #112239;
+      --border-subtle: rgba(186, 230, 253, 0.13);
+      --border-strong: rgba(45, 212, 191, 0.42);
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --teal: #14b8a6;
+      --teal-light: #5eead4;
+      --teal-hover: #2dd4bf;
+      --sky: #38bdf8;
+      --sky-soft: #bae6fd;
+      --rose: #fb7185;
+      --rose-bg: rgba(244, 63, 94, 0.12);
+      --rose-border: rgba(251, 113, 133, 0.38);
+      --amber: #fcd34d;
+      --amber-bg: rgba(245, 158, 11, 0.11);
+      --amber-border: rgba(251, 191, 36, 0.34);
+      --radius-xl: 1rem;
+      --radius-2xl: 1.35rem;
+      --radius-3xl: 1.5rem;
+      --font-sans: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    html[data-theme="high-contrast-navy"] {
+      color-scheme: dark !important;
+      --bg-canvas: #040b14;
+      --bg-surface: #091526;
+      --bg-elevated: #10243e;
+      --bg-elevated-hover: #173458;
+      --header-bg: rgba(4, 11, 20, 0.95);
+      --mobile-nav-bg: rgba(4, 11, 20, 0.98);
+      --subcard-bg: rgba(4, 11, 20, 0.88);
+      --feature-hover-bg: #0f2138;
+      --border-subtle: rgba(186, 230, 253, 0.24);
+      --border-strong: rgba(45, 212, 191, 0.56);
+      --text-primary: #ffffff;
+      --text-secondary: #e2e8f0;
+      --text-muted: #cbd5e1;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: contain;
+    }
+
+    button, input, textarea {
+      font-family: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    code {
+      font-family: var(--font-mono);
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Header */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid var(--border-subtle);
+      background-color: var(--header-bg);
+      backdrop-filter: blur(12px);
+    }
+
+    .header-inner {
+      max-width: 72rem;
+      margin: 0 auto;
+      height: 3.5rem;
+      padding: 0 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 640px) {
+      .header-inner {
+        padding: 0 1.5rem;
+      }
+    }
+
+    .brand-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 44px;
+      padding: 0.25rem 0.4rem;
+      background: transparent;
+      border: 0;
+      border-radius: 0.65rem;
+      color: #ffffff;
+      font-size: 1.125rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .brand-btn:focus-visible,
+    .nav-btn:focus-visible,
+    .mobile-tab:focus-visible,
+    .btn:focus-visible,
+    .input-control:focus-visible,
+    .icon-btn:focus-visible {
+      outline: 2px solid var(--teal-hover);
+      outline-offset: 2px;
+    }
+
+    .desktop-nav {
+      display: none;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .desktop-nav {
+        display: flex;
+      }
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      background: transparent;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      padding: 0.25rem 0.1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .nav-btn:hover {
+      color: #ffffff;
+      border-bottom-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .nav-btn[aria-current="page"] {
+      color: var(--teal-light);
+      font-weight: 600;
+      border-bottom-color: var(--teal-hover);
+    }
+
+    .header-cta {
+      display: none;
+    }
+
+    @media (min-width: 640px) {
+      .header-cta {
+        display: inline-flex;
+      }
+    }
+
+    /* Main Content */
+    .main-container {
+      flex: 1;
+      width: 100%;
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 6.25rem;
+    }
+
+    @media (min-width: 640px) {
+      .main-container {
+        padding: 1.5rem 1.5rem 6.25rem;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .main-container {
+        padding: 2rem 1.5rem 3.25rem;
+      }
+    }
+
+    .view-section {
+      display: none;
+    }
+
+    .view-section.active {
+      display: block;
+      animation: fadeSlide 0.18s ease-out;
+    }
+
+    @keyframes fadeSlide {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .view-section.active {
+        animation: none;
+      }
+      * {
+        transition: none !important;
+      }
+    }
+
+    /* Desktop Footer */
+    .desktop-footer {
+      display: none;
+      border-top: 1px solid var(--border-subtle);
+      background-color: var(--bg-canvas);
+    }
+
+    @media (min-width: 768px) {
+      .desktop-footer {
+        display: block;
+      }
+    }
+
+    .footer-inner {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .footer-link-btn {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .footer-link-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    /* Mobile Fixed Bottom Navigation */
+    .mobile-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 40;
+      border-top: 1px solid var(--border-subtle);
+      background-color: var(--mobile-nav-bg);
+      backdrop-filter: blur(12px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    @media (min-width: 768px) {
+      .mobile-nav {
+        display: none;
+      }
+    }
+
+    .mobile-nav-grid {
+      max-width: 32rem;
+      height: 4rem;
+      margin: 0 auto;
+      padding: 0 0.25rem;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      align-items: center;
+    }
+
+    .mobile-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      min-height: 44px;
+      border: 0;
+      border-radius: 0.75rem;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 0.35rem 0.25rem;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .mobile-tab[aria-current="page"] {
+      color: var(--teal-light);
+      font-weight: 600;
+    }
+
+    /* Layout & Utility Primitives */
+    .stack-lg > * + * { margin-top: 1.75rem; }
+    .stack-md > * + * { margin-top: 1.25rem; }
+    .stack-sm > * + * { margin-top: 0.75rem; }
+    .stack-xs > * + * { margin-top: 0.45rem; }
+
+    .card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-3xl);
+      padding: 1.25rem;
+    }
+
+    @media (min-width: 640px) {
+      .card {
+        padding: 1.5rem;
+      }
+      .card-hero {
+        padding: 2rem;
+      }
+    }
+
+    .banner {
+      border-radius: var(--radius-xl);
+      padding: 0.85rem 1rem;
+      font-size: 0.78rem;
+      line-height: 1.6;
+    }
+
+    .banner-info {
+      background-color: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.26);
+      color: #e0f2fe;
+    }
+
+    .banner-warn {
+      background-color: var(--amber-bg);
+      border: 1px solid var(--amber-border);
+      color: #fef3c7;
+    }
+
+    .banner-danger {
+      background-color: var(--rose-bg);
+      border: 1px solid var(--rose-border);
+      color: #ffe4e6;
+    }
+
+    .banner-ok {
+      background-color: rgba(20, 184, 166, 0.13);
+      border: 1px solid rgba(45, 212, 191, 0.34);
+      color: #ccfbf1;
+    }
+
+    .hero-grid {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 1024px) {
+      .hero-grid {
+        grid-template-columns: 1.35fr 0.9fr;
+        align-items: center;
+      }
+    }
+
+    .hero-aside {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1.25rem;
+    }
+
+    @media (min-width: 1024px) {
+      .hero-aside {
+        border-top: 0;
+        border-left: 1px solid var(--border-subtle);
+        padding-top: 0;
+        padding-left: 1.75rem;
+      }
+    }
+
+    .grid-3 {
+      display: grid;
+      gap: 1rem;
+    }
+
+    @media (min-width: 768px) {
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    .grid-2 {
+      display: grid;
+      gap: 1.15rem;
+    }
+
+    @media (min-width: 768px) {
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    /* Typography */
+    .eyebrow {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--teal-light);
+      margin: 0;
+    }
+
+    .h1-hero {
+      margin: 0.65rem 0 0;
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.28;
+      color: #ffffff;
+    }
+
+    @media (min-width: 640px) {
+      .h1-hero {
+        font-size: 2.2rem;
+      }
+    }
+
+    .h1-page {
+      margin: 0;
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+      color: #ffffff;
+    }
+
+    @media (min-width: 640px) {
+      .h1-page {
+        font-size: 1.85rem;
+      }
+    }
+
+    .lead-text {
+      margin: 0.7rem 0 0;
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .muted-sm {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .text-sm-body {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    /* Buttons & Inputs */
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 48px;
+      padding: 0.65rem 1.25rem;
+      border-radius: 1rem;
+      border: 1px solid transparent;
+      font-size: 0.875rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .btn-sm {
+      min-height: 40px;
+      padding: 0.45rem 0.9rem;
+      border-radius: 0.8rem;
+      font-size: 0.78rem;
+    }
+
+    .btn-primary {
+      background-color: var(--teal);
+      color: #020617;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background-color: var(--teal-hover);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-elevated);
+      border-color: var(--border-subtle);
+      color: #e2e8f0;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background-color: var(--bg-elevated-hover);
+      color: #ffffff;
+    }
+
+    .btn-sky {
+      background-color: rgba(56, 189, 248, 0.14);
+      border-color: rgba(56, 189, 248, 0.28);
+      color: #bae6fd;
+    }
+
+    .btn-sky:hover {
+      background-color: rgba(56, 189, 248, 0.24);
+      color: #ffffff;
+    }
+
+    .btn-danger-outline {
+      background-color: rgba(244, 63, 94, 0.1);
+      border-color: rgba(251, 113, 133, 0.3);
+      color: #fecdd3;
+    }
+
+    .btn-danger-outline:hover:not(:disabled) {
+      background-color: rgba(244, 63, 94, 0.2);
+    }
+
+    .btn-danger-outline:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-height: 44px;
+      background: transparent;
+      border: 0;
+      padding: 0.25rem 0.3rem;
+      color: var(--sky);
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-radius: 0.5rem;
+    }
+
+    .back-btn:hover {
+      color: var(--teal-light);
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+      .input-group {
+        flex-direction: row;
+        align-items: center;
+      }
+    }
+
+    .input-wrap {
+      position: relative;
+      flex: 1;
+    }
+
+    .input-icon-left {
+      position: absolute;
+      left: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+      display: inline-flex;
+    }
+
+    .input-control {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 1rem;
+      border: 1px solid rgba(186, 230, 253, 0.16);
+      background-color: var(--bg-canvas);
+      color: #ffffff;
+      font-size: 0.9rem;
+      padding: 0.65rem 1rem;
+    }
+
+    .input-with-left {
+      padding-left: 2.5rem;
+    }
+
+    .input-with-both {
+      padding-left: 2.5rem;
+      padding-right: 3rem;
+    }
+
+    .input-control::placeholder,
+    .textarea-control::placeholder {
+      color: #64748b;
+    }
+
+    .input-control:focus,
+    .textarea-control:focus {
+      border-color: var(--teal-hover);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.2);
+    }
+
+    .textarea-control {
+      width: 100%;
+      min-height: 8.5rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(186, 230, 253, 0.16);
+      background-color: var(--bg-canvas);
+      color: #ffffff;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      padding: 0.9rem 1rem;
+      resize: vertical;
+    }
+
+    .icon-btn {
+      position: absolute;
+      right: 0.25rem;
+      top: 50%;
+      transform: translateY(-50%);
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 0;
+      border-radius: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .icon-btn:hover {
+      color: #ffffff;
+    }
+
+    .sample-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 0.4rem 0.8rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-subtle);
+      background-color: var(--bg-elevated);
+      color: var(--sky-soft);
+      font-size: 0.78rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .sample-chip:hover {
+      border-color: var(--border-strong);
+      color: #ffffff;
+    }
+
+    /* Feature Cards */
+    .feature-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: left;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-3xl);
+      padding: 1.25rem;
+      width: 100%;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .feature-card:hover {
+      border-color: var(--border-strong);
+      background-color: var(--feature-hover-bg);
+    }
+
+    .feature-icon-box {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .feature-foot {
+      margin-top: 1.25rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--sky);
+    }
+
+    .divider-top {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 0.9rem;
+    }
+
+    .list-clean {
+      margin: 0;
+      padding-left: 1.15rem;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    .list-clean li + li {
+      margin-top: 0.35rem;
+    }
+
+    .subcard {
+      border-radius: 1rem;
+      border: 1px solid var(--border-subtle);
+      background-color: var(--subcard-bg);
+      padding: 0.85rem 1rem;
+    }
+
+    .kv-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
+    .kv-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .kv-val {
+      margin-top: 0.25rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #ffffff;
+      word-break: break-all;
+    }
+
+    .flex-between {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .flex-start-gap {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7rem;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      cursor: pointer;
+    }
+
+    .checkbox-input {
+      width: 1.2rem;
+      height: 1.2rem;
+      accent-color: var(--teal);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .text-teal { color: var(--teal-light); }
+    .text-sky { color: var(--sky); }
+    .text-rose { color: var(--rose); }
+    .text-amber { color: var(--amber); }
+    .text-muted { color: var(--text-muted); }
+    .hidden { display: none !important; }
+
+    .theme-option-grid {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+      .theme-option-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .theme-option-btn {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      width: 100%;
+      text-align: left;
+      padding: 0.85rem 1rem;
+      border-radius: 1rem;
+      border: 1px solid var(--border-subtle);
+      background-color: var(--subcard-bg);
+      color: var(--text-primary);
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .theme-option-btn:hover {
+      border-color: var(--border-strong);
+      background-color: var(--bg-elevated);
+    }
+
+    .theme-option-btn[aria-pressed="true"] {
+      border-color: var(--teal-hover);
+      background-color: rgba(20, 184, 166, 0.12);
+      box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.35);
+    }
+
+    .theme-swatch {
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(186, 230, 253, 0.32);
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+    }
+
+    .theme-option-btn:focus-visible {
+      outline: 2px solid var(--teal-hover);
+      outline-offset: 2px;
+    }
+
+    .spin {
+      animation: spinAnim 0.9s linear infinite;
+    }
+
+    @keyframes spinAnim {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  <script>
+    (function () {
+      var THEME_KEY = "leakguard.static.theme.v1";
+      var DEFAULT_THEME = "dark-navy";
+      var THEME_COLORS = {
+        "dark-navy": "#07111E",
+        "high-contrast-navy": "#040B14"
+      };
+      var resolved = DEFAULT_THEME;
+      try {
+        var stored = window.localStorage.getItem(THEME_KEY);
+        if (stored && Object.prototype.hasOwnProperty.call(THEME_COLORS, stored)) {
+          resolved = stored;
+        } else {
+          window.localStorage.setItem(THEME_KEY, DEFAULT_THEME);
+        }
+      } catch (e) {
+        resolved = DEFAULT_THEME;
+      }
+      var root = document.documentElement;
+      root.setAttribute("data-theme", resolved);
+      root.style.colorScheme = "dark";
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute("content", THEME_COLORS[resolved]);
+      }
+    })();
+  </script>
+<script src="/_aistudio-iframe.js?v=29045eb3"></script><script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@2.0.4"></script><style>.aistudio-hover-highlight { box-shadow: inset 0 0 0 0.5px white, inset 0 0 0 1.5px rgba(128,128,128,0.6) !important; }.aistudio-active-highlight { outline: 2px solid #87a9ff !important; outline-offset: -2px !important; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.3), inset 0 0 0 0.5px rgba(0,0,0,0.3) !important; }.aistudio-generating-blur { filter: blur(5px) grayscale(100%) brightness(28%) !important; transition: filter 0.3s ease; }#aistudio-focus-mode-tag { position: absolute; display: none; align-items: center; gap: 4px; background: #87a9ff; border-radius: 12px; z-index: 10000; padding: 8px; color: #32302c; font-family: Inter, sans-serif; font-size: 14px; font-style: normal; font-weight: 500; line-height: 21px; pointer-events: none; }#aistudio-hover-mode-tag { position: absolute; display: none; align-items: center; gap: 4px; background: rgba(128,128,128,0.6); border-radius: 12px; z-index: 10000; padding: 8px; color: white; font-family: Inter, sans-serif; font-size: 14px; font-style: normal; font-weight: 500; line-height: 21px; pointer-events: none; }.aistudio-img-icon { display: none; vertical-align: middle; pointer-events: auto; cursor: pointer; }.aistudio-img-icon.visible { display: inline-flex; }#aistudio-focus-mode-tag .aistudio-img-icon { position: relative; width: 26px; height: 26px; background: #32302c; border-radius: 6px; margin: -4px -4px -4px 0; }#aistudio-focus-mode-tag .aistudio-img-icon::before { content: ""; position: absolute; top: 4px; left: 4px; width: 18px; height: 18px; background-color: white; -webkit-mask-image: url("https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/edit_fix_auto/default/24px.svg"); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; mask-image: url("https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/edit_fix_auto/default/24px.svg"); mask-size: contain; mask-repeat: no-repeat; }#aistudio-hover-mode-tag .aistudio-img-icon { position: relative; width: 18px; height: 18px; margin-left: 4px; }#aistudio-hover-mode-tag .aistudio-img-icon::before { content: ""; position: absolute; top: 0; left: 0; width: 18px; height: 18px; background-color: white; -webkit-mask-image: url("https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/edit_fix_auto/default/24px.svg"); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; mask-image: url("https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/edit_fix_auto/default/24px.svg"); mask-size: contain; mask-repeat: no-repeat; }#aistudio-focus-mode-tag .aistudio-img-icon:hover, #aistudio-hover-mode-tag .aistudio-img-icon:hover { background: #424242 !important; }#aistudio-focus-mode-tag .aistudio-img-icon:active, #aistudio-hover-mode-tag .aistudio-img-icon:active { background: #393f51 !important; }</style></head>
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="header-inner">
+        <button type="button" class="brand-btn" data-nav="home" aria-label="LeakGuard 홈으로 이동">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+          </svg>
+          <span>LeakGuard</span>
+        </button>
+
+        <nav class="desktop-nav" aria-label="주요 메뉴">
+          <button type="button" class="nav-btn" data-nav="home" aria-current="page">홈</button>
+          <button type="button" class="nav-btn" data-nav="url-check">URL 검사</button>
+          <button type="button" class="nav-btn" data-nav="password-check">비밀번호</button>
+          <button type="button" class="nav-btn" data-nav="phishing-check">피싱 분석</button>
+          <button type="button" class="nav-btn" data-nav="settings">설정</button>
+        </nav>
+
+        <button type="button" class="btn btn-sm btn-sky header-cta" data-nav="url-check">
+          빠른 URL 점검
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Scrollable Content -->
+    <main class="main-container">
+      <!-- ==================== VIEW 1: HOME ==================== -->
+      <section id="view-home" class="view-section stack-lg active" aria-labelledby="home-title">
+        <div class="card card-hero">
+          <div class="hero-grid">
+            <div>
+              <p class="eyebrow">회원가입 없는 정보보안 점검 도구 · 단일 HTML 실행 지원</p>
+              <h1 id="home-title" class="h1-hero">
+                의심스러운 링크와 메시지, 열기 전에 바로 점검하세요
+              </h1>
+              <p class="lead-text">
+                LeakGuard는 로그인이나 계정 생성 없이 URL 구조 위험 신호, 비밀번호 유출 여부(HIBP k-Anonymity),
+                피싱·스미싱 의심 문구를 빠르게 점검할 수 있는 한국어 보안 웹 애플리케이션입니다.
+              </p>
+              <div class="btn-row" style="margin-top: 1.5rem;">
+                <button type="button" class="btn btn-primary" data-nav="url-check">
+                  <span>URL 검사 시작하기</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
+                  </svg>
+                </button>
+                <button type="button" class="btn btn-secondary" data-nav="settings">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <span>개인정보 안내 및 설정</span>
+                </button>
+                <button type="button" class="btn btn-sky" data-nav="settings" data-scroll-target="github-export-card">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line>
+                  </svg>
+                  <span>GitHub 파일 다운로드</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="hero-aside stack-md">
+              <div class="flex-start-gap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px" aria-hidden="true">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path>
+                </svg>
+                <div>
+                  <h2 style="margin:0;font-size:0.9rem;font-weight:700;color:#fff;">임의 결과 생성 · 과장 금지</h2>
+                  <p class="muted-sm" style="margin-top:0.3rem;line-height:1.55;">
+                    API 키가 필요한 Google Safe Browsing과 Gemini AI는 정적 HTML 환경에서 미연동(조회 불가)으로 명확히 안내하며, 어떤 검사도 안전을 100% 보장하지 않습니다.
+                  </p>
+                </div>
+              </div>
+              <div class="divider-top flex-start-gap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px" aria-hidden="true">
+                  <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <div>
+                  <h2 style="margin:0;font-size:0.9rem;font-weight:700;color:#fff;">최소 전송 보안 원칙</h2>
+                  <p class="muted-sm" style="margin-top:0.3rem;line-height:1.55;">
+                    원본 비밀번호와 전체 해시는 절대 외부 전송·저장하지 않으며, URL 및 피싱 분석 입력도 기기 내에서만 정적·규칙 기반으로 처리합니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section class="stack-sm" aria-labelledby="home-tools-heading">
+          <div class="flex-between">
+            <h2 id="home-tools-heading" class="section-title">주요 보안 점검 기능</h2>
+            <span class="muted-sm">총 3가지 핵심 검사 · 즉시 실행</span>
+          </div>
+
+          <div class="grid-3">
+            <button type="button" class="feature-card" data-nav="url-check">
+              <div>
+                <div class="flex-between">
+                  <span class="feature-icon-box" style="background:rgba(20,184,166,0.15);color:#5eead4;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                  </span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+                </div>
+                <h3 style="margin:1rem 0 0;font-size:1rem;font-weight:700;color:#fff;">의심스러운 URL 검사</h3>
+                <p style="margin:0.25rem 0 0;font-size:0.75rem;font-weight:600;color:#5eead4;">로컬 구조 분석 · 외부 DB 조회 불가</p>
+                <p class="text-sm-body" style="margin-top:0.65rem;">
+                  HTTPS 여부, IP 직접 접근, Punycode(xn--), @ 혼동 기법, 사칭 키워드 등을 링크 접속 없이 브라우저 내에서 즉시 분석합니다.
+                </p>
+              </div>
+              <div class="feature-foot">화면으로 이동하기 →</div>
+            </button>
+
+            <button type="button" class="feature-card" data-nav="password-check">
+              <div>
+                <div class="flex-between">
+                  <span class="feature-icon-box" style="background:rgba(56,189,248,0.15);color:#38bdf8;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path></svg>
+                  </span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+                </div>
+                <h3 style="margin:1rem 0 0;font-size:1rem;font-weight:700;color:#fff;">유출 비밀번호 확인</h3>
+                <p style="margin:0.25rem 0 0;font-size:0.75rem;font-weight:600;color:#38bdf8;">Web Crypto SHA-1 앞 5자리 HIBP 조회</p>
+                <p class="text-sm-body" style="margin-top:0.65rem;">
+                  비밀번호 원문을 보내지 않고 해시 앞 5자리만 Range API로 대조하며, 흔한·연속·반복 패턴을 함께 진단합니다.
+                </p>
+              </div>
+              <div class="feature-foot">화면으로 이동하기 →</div>
+            </button>
+
+            <button type="button" class="feature-card" data-nav="phishing-check">
+              <div>
+                <div class="flex-between">
+                  <span class="feature-icon-box" style="background:rgba(59,130,246,0.16);color:#93c5fd;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M12 7v2"></path><path d="M12 13h.01"></path></svg>
+                  </span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+                </div>
+                <h3 style="margin:1rem 0 0;font-size:1rem;font-weight:700;color:#fff;">피싱·스미싱 메시지 분석</h3>
+                <p style="margin:0.25rem 0 0;font-size:0.75rem;font-weight:600;color:#93c5fd;">규칙 기반 로컬 탐지 (AI 미사용)</p>
+                <p class="text-sm-body" style="margin-top:0.65rem;">
+                  API 키 없이 문자·메신저 본문에서 택배·금융·기관 사칭, 인증번호 요구, 긴급 압박 문구와 포함된 URL을 즉시 분석합니다.
+                </p>
+              </div>
+              <div class="feature-foot">화면으로 이동하기 →</div>
+            </button>
+          </div>
+        </section>
+
+        <!-- Optional Local History on Home -->
+        <section id="home-history-card" class="card hidden" aria-labelledby="home-history-heading">
+          <div class="flex-between">
+            <h2 id="home-history-heading" class="card-title">최근 로컬 점검 요약</h2>
+            <button type="button" class="back-btn" data-nav="settings">저장 설정 관리</button>
+          </div>
+          <div id="home-history-list" class="stack-xs" style="margin-top:0.75rem;"></div>
+        </section>
+      </section>
+
+      <!-- ==================== VIEW 2: URL CHECK ==================== -->
+      <section id="view-url-check" class="view-section stack-md" aria-labelledby="url-page-title">
+        <div>
+          <button type="button" class="back-btn" data-nav="home">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+            <span>홈으로 돌아가기</span>
+          </button>
+        </div>
+
+        <header class="stack-xs">
+          <h1 id="url-page-title" class="h1-page">의심스러운 URL 검사</h1>
+          <p class="text-sm-body">
+            입력한 링크에 직접 접속하거나 실행하지 않고 브라우저 내에서 정적 URL 구조와 사칭 패턴을 분석합니다.
+          </p>
+        </header>
+
+        <div class="banner banner-warn">
+          <strong style="color:#fde68a;">외부 위협 데이터베이스 조회 불가 (Google Safe Browsing 미연결)</strong>
+          <div style="margin-top:0.25rem;color:#cbd5e1;">
+            이 단일 HTML 버전은 API 키 노출을 막기 위해 서버 전용 Google Safe Browsing API를 호출하지 않습니다. 외부 위협 DB 조회는 <strong>조회 불가</strong>로 표시되며 로컬 구조 분석 결과만으로 안전이 100% 보장되지 않습니다.
+          </div>
+        </div>
+
+        <section class="card">
+          <form id="url-form" class="stack-sm">
+            <div class="flex-between">
+              <label for="url-input" style="font-size:0.875rem;font-weight:600;color:#fff;">검사할 링크(URL) 입력</label>
+              <span id="url-char-count" class="muted-sm tabular-nums">0 / 2,048자</span>
+            </div>
+
+            <div class="input-group">
+              <div class="input-wrap">
+                <span class="input-icon-left">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                </span>
+                <input id="url-input" type="text" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="2048" placeholder="예: https://example.com/login" class="input-control input-with-left">
+              </div>
+
+              <div class="btn-row" style="flex-shrink:0;">
+                <button type="submit" class="btn btn-primary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                  <span>검사 시작</span>
+                </button>
+                <button type="button" id="url-reset-btn" class="btn btn-secondary hidden" aria-label="입력 초기화">
+                  <span>초기화</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="divider-top">
+              <p class="muted-sm" style="margin-bottom:0.5rem;">테스트용 예시 링크로 바로 확인</p>
+              <div class="btn-row">
+                <button type="button" class="sample-chip" data-url-sample="https://www.kisa.or.kr/401">정상 HTTPS 예시</button>
+                <button type="button" class="sample-chip" data-url-sample="http://naver-login-verify.xyz/auth?redirect=http://198.51.100.24">사칭·리다이렉트 의심 예시</button>
+                <button type="button" class="sample-chip" data-url-sample="https://kakao.com@xn--80ak6aa92e.com:8443/verify">Punycode·인증정보(@) 예시</button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <div id="url-result-area" aria-live="polite" class="stack-md"></div>
+      </section>
+
+      <!-- ==================== VIEW 3: PASSWORD CHECK ==================== -->
+      <section id="view-password-check" class="view-section stack-md" aria-labelledby="pw-page-title">
+        <div>
+          <button type="button" class="back-btn" data-nav="home">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+            <span>홈으로 돌아가기</span>
+          </button>
+        </div>
+
+        <header class="stack-xs">
+          <h1 id="pw-page-title" class="h1-page">비밀번호 유출 및 안전성 검사</h1>
+          <p class="text-sm-body">
+            원본 비밀번호와 전체 SHA-1 해시는 서버·저장소·로그에 절대 전송되거나 기록되지 않습니다. Web Crypto API로 계산한 SHA-1 해시 앞 5자리만 Have I Been Pwned Range API에 전달해 브라우저에서 직접 대조합니다(k-Anonymity).
+          </p>
+        </header>
+
+        <div id="pw-crypto-warning" class="banner banner-warn hidden" role="alert">
+          <strong style="color:#fde68a;">Web Crypto API 미지원 환경</strong>
+          <div style="margin-top:0.25rem;color:#cbd5e1;">
+            현재 브라우저 컨텍스트에서는 SHA-1 해시 계산이 제한되어 외부 유출 DB는 <strong>조회 불가</strong>입니다. 로컬 구조·패턴 분석만 이용할 수 있습니다.
+          </div>
+        </div>
+
+        <section class="card">
+          <form id="pw-form" class="stack-sm">
+            <label for="pw-input" style="font-size:0.875rem;font-weight:600;color:#fff;">점검할 비밀번호 입력</label>
+
+            <div class="input-group">
+              <div class="input-wrap">
+                <span class="input-icon-left">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path></svg>
+                </span>
+                <input id="pw-input" type="password" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="확인할 비밀번호를 입력하세요" class="input-control input-with-both">
+                <button type="button" id="pw-toggle-btn" class="icon-btn" aria-label="비밀번호 보기">
+                  <svg id="pw-eye-open" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  <svg id="pw-eye-off" class="hidden" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" x2="22" y1="2" y2="22"></line></svg>
+                </button>
+              </div>
+
+              <div class="btn-row" style="flex-shrink:0;">
+                <button type="submit" id="pw-submit-btn" class="btn btn-primary" disabled="">
+                  <span>유출·강도 확인</span>
+                </button>
+                <button type="button" id="pw-reset-btn" class="btn btn-secondary hidden">
+                  <span>초기화</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="divider-top">
+              <label class="checkbox-row" for="pw-hibp-toggle">
+                <span style="font-size:0.78rem;color:#cbd5e1;">
+                  Have I Been Pwned 유출 DB 조회 사용 (해시 앞 5자리만 전송 · 인터넷 연결 필요)
+                </span>
+                <input id="pw-hibp-toggle" type="checkbox" class="checkbox-input" checked="">
+              </label>
+            </div>
+          </form>
+        </section>
+
+        <div id="pw-result-area" aria-live="polite" class="stack-md"></div>
+      </section>
+
+      <!-- ==================== VIEW 4: PHISHING CHECK ==================== -->
+      <section id="view-phishing-check" class="view-section stack-md" aria-labelledby="phishing-page-title">
+        <div>
+          <button type="button" class="back-btn" data-nav="home">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+            <span>홈으로 돌아가기</span>
+          </button>
+        </div>
+
+        <header class="stack-xs">
+          <h1 id="phishing-page-title" class="h1-page">피싱·스미싱 의심 메시지 검사</h1>
+          <p class="text-sm-body">
+            문자(SMS), 메신저, 이메일 본문을 붙여넣으면 브라우저 내에서 규칙 기반으로 사칭 문구, 인증번호 요구, 긴급 압박 표현, 포함된 URL 구조를 즉시 검사합니다.
+          </p>
+        </header>
+
+        <div class="banner banner-info">
+          <strong style="color:#bae6fd;">규칙 기반 로컬 검사 모드 (Gemini AI 미연결 · 조회 불가)</strong>
+          <div style="margin-top:0.25rem;color:#cbd5e1;">
+            이 검사는 인공지능(AI)이 아닌 키워드·정규식·URL 구조 규칙에 기반한 로컬 추정 검사입니다. 입력한 메시지는 외부 서버로 전송·저장되지 않으며 포함된 링크에도 직접 접속하지 않습니다.
+          </div>
+        </div>
+
+        <section class="card">
+          <form id="phishing-form" class="stack-sm">
+            <div>
+              <label for="phishing-sender" style="display:block;font-size:0.78rem;font-weight:600;color:#cbd5e1;margin-bottom:0.4rem;">
+                발신자 또는 수신 상황 (선택)
+              </label>
+              <input id="phishing-sender" type="text" placeholder="예: 모르는 국제발신 번호, 택배사 사칭, 카드사 문자" class="input-control">
+            </div>
+
+            <div>
+              <div class="flex-between" style="margin-bottom:0.4rem;">
+                <label for="phishing-message" style="font-size:0.875rem;font-weight:600;color:#fff;">의심 메시지 입력</label>
+                <span id="phishing-char-count" class="muted-sm tabular-nums">0자</span>
+              </div>
+              <textarea id="phishing-message" placeholder="수신한 문자, 메신저, 이메일 본문을 그대로 붙여넣으세요. 비밀번호나 주민등록번호 등 민감정보는 가리고 입력하는 것이 안전합니다." class="textarea-control"></textarea>
+            </div>
+
+            <div id="phishing-validation-msg" class="banner banner-warn hidden" role="alert"></div>
+
+            <div class="btn-row">
+              <button type="submit" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M12 7v2"></path><path d="M12 13h.01"></path></svg>
+                <span>메시지 검사 시작</span>
+              </button>
+              <button type="button" id="phishing-reset-btn" class="btn btn-secondary hidden">
+                <span>검사 내용 초기화</span>
+              </button>
+            </div>
+
+            <div class="divider-top">
+              <p class="muted-sm" style="margin-bottom:0.5rem;">테스트용 문구 불러오기</p>
+              <div class="btn-row">
+                <button type="button" class="sample-chip" data-phishing-sample="delivery">택배 사칭 예시</button>
+                <button type="button" class="sample-chip" data-phishing-sample="finance">금융기관 사칭 예시</button>
+                <button type="button" class="sample-chip" data-phishing-sample="normal">일반 정상 안내 예시</button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <div id="phishing-result-area" aria-live="polite" class="stack-md"></div>
+      </section>
+
+      <!-- ==================== VIEW 5: SETTINGS ==================== -->
+      <section id="view-settings" class="view-section stack-md" aria-labelledby="settings-page-title">
+        <div>
+          <button type="button" class="back-btn" data-nav="home">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+            <span>홈으로 돌아가기</span>
+          </button>
+        </div>
+
+        <header class="stack-xs">
+          <h1 id="settings-page-title" class="h1-page">설정 및 개인정보 처리 안내</h1>
+          <p class="text-sm-body">
+            LeakGuard의 데이터 처리 원칙, 브라우저 로컬 설정, 실제 동작 기능 및 미연동 범위를 확인할 수 있습니다.
+          </p>
+        </header>
+
+        <div id="settings-feedback" class="banner banner-ok hidden" role="status" aria-live="polite"></div>
+
+        <section class="card stack-sm">
+          <h2 class="card-title">서비스 설정 (로컬 브라우저 저장)</h2>
+
+          <div class="divider-top">
+            <label class="checkbox-row" for="setting-history">
+              <div>
+                <div style="font-size:0.875rem;font-weight:600;color:#fff;">최근 검사 요약 로컬 저장</div>
+                <p class="muted-sm" style="margin-top:0.2rem;">
+                  켜면 홈 화면에 최근 점검 요약(최대 12건)을 표시합니다. 비밀번호 원문과 메시지 원문은 저장하지 않습니다.
+                </p>
+              </div>
+              <input id="setting-history" type="checkbox" class="checkbox-input">
+            </label>
+          </div>
+
+          <div class="divider-top">
+            <label class="checkbox-row" for="setting-hibp">
+              <div>
+                <div style="font-size:0.875rem;font-weight:600;color:#fff;">비밀번호 유출 DB(HIBP) 외부 조회 허용</div>
+                <p class="muted-sm" style="margin-top:0.2rem;">
+                  SHA-1 해시 앞 5자리만 전송하는 k-Anonymity 방식을 사용합니다. 끄면 로컬 강도·패턴 분석만 수행합니다.
+                </p>
+              </div>
+              <input id="setting-hibp" type="checkbox" class="checkbox-input" checked="">
+            </label>
+          </div>
+
+          <div class="divider-top flex-between" style="flex-wrap:wrap;">
+            <span class="muted-sm">현재 저장된 로컬 점검 요약: <strong id="settings-history-count" style="color:#fff;" class="tabular-nums">0건</strong></span>
+            <button type="button" id="settings-clear-history-btn" class="btn btn-sm btn-danger-outline" disabled="">
+              저장된 기록 삭제
+            </button>
+          </div>
+        </section>
+
+        <section class="card stack-sm" aria-labelledby="theme-settings-title">
+          <div class="flex-between" style="flex-wrap:wrap;">
+            <h2 id="theme-settings-title" class="card-title">화면 테마 설정 (브라우저 로컬 유지)</h2>
+            <span id="theme-active-badge" class="text-teal" style="font-size:0.75rem;font-weight:600;">다크 네이비 유지 중</span>
+          </div>
+          <p class="muted-sm">
+            선택한 테마는 <code>localStorage</code>에 저장되며, 기기나 OS의 라이트/다크 모드 설정이 바뀌어도 다크 네이비 화면을 일관되게 유지합니다.
+          </p>
+
+          <div class="theme-option-grid" role="group" aria-label="화면 테마 선택">
+            <button type="button" class="theme-option-btn" data-theme-choice="dark-navy" aria-pressed="true">
+              <span class="theme-swatch" style="background: linear-gradient(135deg, #07111e 55%, #14b8a6 100%);" aria-hidden="true"></span>
+              <span>
+                <span style="display:block;font-size:0.875rem;font-weight:600;color:#fff;">다크 네이비 (기본)</span>
+                <span class="muted-sm" style="display:block;margin-top:0.2rem;">LeakGuard 기본 다크 네이비(#07111E) 및 청록색 보안 UI를 항상 유지합니다.</span>
+              </span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-choice="high-contrast-navy" aria-pressed="false">
+              <span class="theme-swatch" style="background: linear-gradient(135deg, #040b14 55%, #5eead4 100%);" aria-hidden="true"></span>
+              <span>
+                <span style="display:block;font-size:0.875rem;font-weight:600;color:#fff;">고대비 다크 네이비</span>
+                <span class="muted-sm" style="display:block;margin-top:0.2rem;">더 깊은 네이비(#040B14) 배경과 선명한 경계선으로 가독성을 높입니다.</span>
+              </span>
+            </button>
+          </div>
+
+          <div class="subcard">
+            <p id="theme-persistence-status" class="muted-sm" style="color:var(--text-secondary);">저장 상태 확인 중...</p>
+          </div>
+        </section>
+
+        <section id="github-export-card" class="card stack-sm" aria-labelledby="github-export-title">
+          <div class="flex-between" style="flex-wrap:wrap;">
+            <h2 id="github-export-title" class="card-title">GitHub 업로드용 소스 파일 다운로드</h2>
+            <span class="text-sky" style="font-size:0.75rem;font-weight:600;">정적 HTML · GitHub Pages 호환</span>
+          </div>
+          <p class="muted-sm">
+            현재 LeakGuard 앱을 초기화한 깨끗한 <code>index.html</code>과 <code>README.md</code>, <code>.gitignore</code> 파일을 바로 내려받아 GitHub 저장소에 업로드할 수 있습니다. (입력한 검사 기록·비밀번호는 포함되지 않습니다.)
+          </p>
+
+          <div class="btn-row" style="margin-top:0.25rem;">
+            <button type="button" id="download-github-zip-btn" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line>
+              </svg>
+              <span>GitHub 업로드 패키지 (.zip) 다운로드</span>
+            </button>
+            <button type="button" id="download-index-html-btn" class="btn btn-secondary">
+              <span>index.html 단독 다운로드</span>
+            </button>
+            <button type="button" id="download-readme-btn" class="btn btn-secondary">
+              <span>README.md 다운로드</span>
+            </button>
+          </div>
+
+          <div id="export-feedback" class="banner banner-ok hidden" role="status" aria-live="polite"></div>
+
+          <div class="subcard stack-xs">
+            <div style="font-size:0.82rem;font-weight:600;color:#fff;">GitHub 웹 업로드 및 Pages 배포 순서</div>
+            <ol class="list-clean" style="margin-top:0.2rem;">
+              <li>위 버튼으로 <code>leakguard-github.zip</code>(압축 해제 후 업로드) 또는 <code>index.html</code> + <code>README.md</code>를 다운로드합니다.</li>
+              <li>GitHub 저장소에서 <strong>Add file → Upload files</strong>를 눌러 루트 경로에 업로드하고 커밋합니다.</li>
+              <li>웹사이트로 바로 배포하려면 저장소 <strong>Settings → Pages</strong>에서 Branch를 <code>main</code> / <code>/(root)</code>로 지정합니다.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="card stack-sm">
+          <h2 class="card-title">개인정보 처리 안내</h2>
+          <ul class="list-clean divider-top">
+            <li><strong style="color:#fff;">회원가입 불필요:</strong> 이름, 이메일, 전화번호 등 개인 식별 정보를 수집하지 않으며 즉시 모든 기능을 이용할 수 있습니다.</li>
+            <li><strong style="color:#fff;">비밀번호 원문 비전송·비저장:</strong> 브라우저 Web Crypto API로 계산한 SHA-1 해시 앞 5자리만 HIBP Range API에 전달하며 전체 해시와 원문은 저장·로그하지 않습니다.</li>
+            <li><strong style="color:#fff;">URL 및 메시지 비접속·비보관:</strong> 입력한 URL이나 메시지 내 링크에 직접 접속하지 않으며 메시지 원문을 서버나 저장소에 보관하지 않습니다.</li>
+            <li><strong style="color:#fff;">안전 보장 불가 안내:</strong> 모든 검사는 보조 진단 도구이며 알려진 위협 목록에 없더라도 100% 안전을 보장하지 않습니다.</li>
+          </ul>
+        </section>
+
+        <section class="card stack-sm">
+          <h2 class="card-title">기능별 실제 동작 vs 조회 불가(미연동) 범위</h2>
+          <div class="stack-xs divider-top">
+            <div class="subcard">
+              <div class="flex-between">
+                <strong style="font-size:0.875rem;color:#fff;">URL 로컬 정적 구조·사칭 패턴 검사</strong>
+                <span class="text-teal" style="font-size:0.75rem;font-weight:600;">실제 동작 (로컬)</span>
+              </div>
+              <p class="muted-sm" style="margin-top:0.3rem;">HTTPS 여부, IP 직접 연결, Punycode, @ 기호 혼동, 단축 URL, 사칭 도메인 패턴을 오프라인에서도 분석합니다.</p>
+            </div>
+            <div class="subcard">
+              <div class="flex-between">
+                <strong style="font-size:0.875rem;color:#fff;">Google Safe Browsing 외부 악성 URL DB</strong>
+                <span class="text-amber" style="font-size:0.75rem;font-weight:600;">조회 불가 (미연동)</span>
+              </div>
+              <p class="muted-sm" style="margin-top:0.3rem;">API 키 보호를 위한 백엔드 서버가 없는 단일 HTML 환경이므로 연동하지 않았으며 조회 불가로 명시합니다.</p>
+            </div>
+            <div class="subcard">
+              <div class="flex-between">
+                <strong style="font-size:0.875rem;color:#fff;">비밀번호 강도 분석 &amp; HIBP k-Anonymity</strong>
+                <span class="text-teal" style="font-size:0.75rem;font-weight:600;">실제 동작 (인터넷 필요)</span>
+              </div>
+              <p class="muted-sm" style="margin-top:0.3rem;">로컬 취약 패턴 분석은 오프라인에서도 동작하며, HIBP 유출 조회는 인터넷 연결 시 앞 5자리 해시만 대조합니다.</p>
+            </div>
+            <div class="subcard">
+              <div class="flex-between">
+                <strong style="font-size:0.875rem;color:#fff;">피싱·스미싱 메시지 검사</strong>
+                <span class="text-teal" style="font-size:0.75rem;font-weight:600;">규칙 기반 동작 (AI 미연동)</span>
+              </div>
+              <p class="muted-sm" style="margin-top:0.3rem;">Gemini AI가 아닌 브라우저 내 규칙·키워드·URL 구조 탐지 엔진만 동작합니다.</p>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <!-- Desktop Footer -->
+    <footer class="desktop-footer">
+      <div class="footer-inner">
+        <span>LeakGuard · 회원가입 없는 단일 HTML 정보보안 점검 도구</span>
+        <div class="footer-links">
+          <button type="button" class="footer-link-btn" data-nav="settings" data-scroll-target="github-export-card">GitHub 파일 다운로드</button>
+          <span aria-hidden="true">·</span>
+          <button type="button" class="footer-link-btn" data-nav="settings">개인정보 처리 안내</button>
+          <span aria-hidden="true">·</span>
+          <button type="button" class="footer-link-btn" data-nav="settings">기능 범위 안내</button>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Mobile Fixed Bottom Navigation -->
+    <nav class="mobile-nav" aria-label="모바일 하단 내비게이션">
+      <div class="mobile-nav-grid">
+        <button type="button" class="mobile-tab" data-nav="home" aria-current="page">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          <span>홈</span>
+        </button>
+        <button type="button" class="mobile-tab" data-nav="url-check">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+          <span>URL</span>
+        </button>
+        <button type="button" class="mobile-tab" data-nav="password-check">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path></svg>
+          <span>비밀번호</span>
+        </button>
+        <button type="button" class="mobile-tab" data-nav="phishing-check">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M12 7v2"></path><path d="M12 13h.01"></path></svg>
+          <span>피싱</span>
+        </button>
+        <button type="button" class="mobile-tab" data-nav="settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>설정</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      /* =========================================================
+       * 1. SAFE HTML ESCAPING & LOCAL PREFERENCES (NO SENSITIVE DATA)
+       * ========================================================= */
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      var SETTINGS_KEY = "leakguard.static.settings.v1";
+      var HISTORY_KEY = "leakguard.static.history.v1";
+      var THEME_KEY = "leakguard.static.theme.v1";
+      var DEFAULT_THEME = "dark-navy";
+      var THEMES = {
+        "dark-navy": {
+          id: "dark-navy",
+          label: "다크 네이비 (기본)",
+          themeColor: "#07111E"
+        },
+        "high-contrast-navy": {
+          id: "high-contrast-navy",
+          label: "고대비 다크 네이비",
+          themeColor: "#040B14"
+        }
+      };
+      var DEFAULT_SETTINGS = { saveLocalHistory: false, enableExternalHibp: true, theme: DEFAULT_THEME };
+
+      function normalizeThemeId(value) {
+        if (value && Object.prototype.hasOwnProperty.call(THEMES, value)) {
+          return value;
+        }
+        return DEFAULT_THEME;
+      }
+
+      function safeGetItem(key) {
+        try {
+          return window.localStorage.getItem(key);
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function safeSetItem(key, val) {
+        try {
+          window.localStorage.setItem(key, val);
+          return true;
+        } catch (e) {
+          /* Ignore localStorage restrictions on strict file:// contexts */
+          return false;
+        }
+      }
+
+      function safeRemoveItem(key) {
+        try {
+          window.localStorage.removeItem(key);
+        } catch (e) {
+          /* Ignore */
+        }
+      }
+
+      function getSavedTheme() {
+        var direct = safeGetItem(THEME_KEY);
+        if (direct && Object.prototype.hasOwnProperty.call(THEMES, direct)) {
+          return direct;
+        }
+        var rawSettings = safeGetItem(SETTINGS_KEY);
+        if (rawSettings) {
+          try {
+            var parsedSettings = JSON.parse(rawSettings);
+            if (parsedSettings && Object.prototype.hasOwnProperty.call(THEMES, parsedSettings.theme)) {
+              return parsedSettings.theme;
+            }
+          } catch (e) {
+            /* Fall back to default dark navy */
+          }
+        }
+        return DEFAULT_THEME;
+      }
+
+      function loadSettings() {
+        var raw = safeGetItem(SETTINGS_KEY);
+        var activeTheme = getSavedTheme();
+        if (!raw) {
+          return Object.assign({}, DEFAULT_SETTINGS, { theme: activeTheme });
+        }
+        try {
+          var parsed = JSON.parse(raw);
+          return {
+            saveLocalHistory: Boolean(parsed.saveLocalHistory),
+            enableExternalHibp: parsed.enableExternalHibp === undefined ? true : Boolean(parsed.enableExternalHibp),
+            theme: normalizeThemeId(safeGetItem(THEME_KEY) || parsed.theme)
+          };
+        } catch (e) {
+          return Object.assign({}, DEFAULT_SETTINGS, { theme: activeTheme });
+        }
+      }
+
+      function saveSettings(next) {
+        var normalized = {
+          saveLocalHistory: Boolean(next.saveLocalHistory),
+          enableExternalHibp: next.enableExternalHibp === undefined ? true : Boolean(next.enableExternalHibp),
+          theme: normalizeThemeId(next.theme)
+        };
+        safeSetItem(THEME_KEY, normalized.theme);
+        safeSetItem(SETTINGS_KEY, JSON.stringify(normalized));
+        if (!normalized.saveLocalHistory) {
+          safeRemoveItem(HISTORY_KEY);
+        }
+      }
+
+      function loadLocalHistory() {
+        var settings = loadSettings();
+        if (!settings.saveLocalHistory) return [];
+        var raw = safeGetItem(HISTORY_KEY);
+        if (!raw) return [];
+        try {
+          var parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function appendLocalHistory(record) {
+        var settings = loadSettings();
+        if (!settings.saveLocalHistory) return;
+        var current = loadLocalHistory();
+        var entry = {
+          id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+          category: record.category,
+          summary: record.summary,
+          outcomeLabel: record.outcomeLabel,
+          timestamp: new Date().toISOString()
+        };
+        safeSetItem(HISTORY_KEY, JSON.stringify([entry].concat(current).slice(0, 12)));
+        renderHomeHistory();
+        syncSettingsUI();
+      }
+
+      function clearLocalHistory() {
+        safeRemoveItem(HISTORY_KEY);
+        renderHomeHistory();
+        syncSettingsUI();
+      }
+
+      /* =========================================================
+       * 2. URL LOCAL STRUCTURAL ANALYZER (PORTED TO PURE JS)
+       * ========================================================= */
+      var SHORTENER_HOSTS = new Set([
+        "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd",
+        "buff.ly", "rebrand.ly", "cutt.ly", "han.gl", "me2.do", "vo.la", "url.kr"
+      ]);
+
+      var SUSPICIOUS_TLDS = new Set([
+        "zip", "mov", "top", "xyz", "click", "tk", "ml", "ga", "cf", "gq", "buzz", "work", "rest", "icu"
+      ]);
+
+      var BRAND_PATTERNS = [
+        { keyword: "naver", officialDomains: ["naver.com", "navercorp.com"], label: "네이버(Naver)" },
+        { keyword: "kakao", officialDomains: ["kakao.com", "kakaocorp.com", "daum.net"], label: "카카오(Kakao)" },
+        { keyword: "coupang", officialDomains: ["coupang.com"], label: "쿠팡(Coupang)" },
+        { keyword: "toss", officialDomains: ["toss.im", "tossbank.com", "tosspayments.com"], label: "토스(Toss)" },
+        { keyword: "shinhan", officialDomains: ["shinhan.com", "shinhancard.com"], label: "신한금융" },
+        { keyword: "kbstar", officialDomains: ["kbstar.com", "kbfg.com"], label: "KB국민은행" },
+        { keyword: "woori", officialDomains: ["wooribank.com"], label: "우리은행" },
+        { keyword: "gov", officialDomains: ["gov.kr", "korea.kr"], label: "정부·공공기관" }
+      ];
+
+      var REDIRECT_PARAM_KEYS = ["url", "redirect", "redirect_uri", "next", "return", "target", "goto", "dest"];
+
+      function isIpv4(host) {
+        return /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(host);
+      }
+
+      function isIpv6(host) {
+        return host.indexOf("[") === 0 && host.lastIndexOf("]") === host.length - 1;
+      }
+
+      function matchesOfficialDomain(hostname, officialDomains) {
+        return officialDomains.some(function (official) {
+          return hostname === official || hostname.endsWith("." + official);
+        });
+      }
+
+      function analyzeUrlStructure(rawInput) {
+        var trimmed = String(rawInput || "").trim();
+        if (!trimmed) {
+          return { valid: false, errorMessage: "검사할 URL 주소를 입력해 주세요.", findings: [] };
+        }
+        if (trimmed.length > 2048) {
+          return { valid: false, errorMessage: "URL 길이는 최대 2,048자까지 입력할 수 있습니다.", findings: [] };
+        }
+
+        var hasExplicitScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed);
+        var candidate = hasExplicitScheme ? trimmed : "https://" + trimmed;
+        var parsed;
+
+        try {
+          parsed = new URL(candidate);
+        } catch (e) {
+          return {
+            valid: false,
+            errorMessage: "유효한 URL 형식이 아닙니다. 도메인과 경로 형식을 다시 확인해 주세요.",
+            riskSummary: "위험 신호 감지",
+            findings: []
+          };
+        }
+
+        var hostname = parsed.hostname.toLowerCase();
+        if (!hostname || (hostname.indexOf(".") === -1 && !isIpv6(hostname) && hostname !== "localhost")) {
+          return {
+            valid: false,
+            errorMessage: "도메인 구조가 완전하지 않습니다. 예: https://example.com",
+            riskSummary: "주의 필요",
+            findings: []
+          };
+        }
+
+        var findings = [];
+
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+          findings.push({
+            id: "non-web-protocol",
+            severity: "high",
+            title: "비표준 프로토콜(" + parsed.protocol + ") 사용",
+            detail: "일반 웹 주소(https://)가 아닌 특수 스킴이 포함되어 있어 앱 실행이나 스크립트 동작 위험을 확인해야 합니다."
+          });
+        } else if (parsed.protocol === "http:") {
+          findings.push({
+            id: "insecure-http",
+            severity: "medium",
+            title: "암호화되지 않은 HTTP 연결",
+            detail: "HTTPS TLS 암호화가 적용되지 않은 주소입니다. 로그인·결제·개인정보 입력 페이지라면 주의가 필요합니다."
+          });
+        } else if (!hasExplicitScheme) {
+          findings.push({
+            id: "assumed-https",
+            severity: "info",
+            title: "프로토콜 생략으로 HTTPS 기준 해석",
+            detail: "입력값에 http:// 또는 https://가 없어 구조 점검을 위해 https:// 기준으로 파싱했습니다."
+          });
+        }
+
+        if (parsed.username || parsed.password) {
+          findings.push({
+            id: "embedded-credentials",
+            severity: "high",
+            title: "URL 내부 사용자 인증 정보(@) 포함",
+            detail: "https://trusted.com@evil.example 형태의 주소는 실제 접속 대상 도메인을 혼동시키는 대표적인 피싱 기법입니다."
+          });
+        }
+
+        if (isIpv4(hostname) || isIpv6(hostname)) {
+          findings.push({
+            id: "raw-ip-host",
+            severity: "high",
+            title: "도메인 대신 IP 주소 직접 사용",
+            detail: "정상 기관·금융 서비스는 대부분 검증된 도메인을 사용하며, IP 직접 연결 링크는 임시 피싱 서버에서 자주 쓰입니다."
+          });
+        }
+
+        if (hostname.split(".").some(function (label) { return label.indexOf("xn--") === 0; })) {
+          findings.push({
+            id: "punycode-idn",
+            severity: "high",
+            title: "Punycode(xn--) 다국어 혼동 도메인 감지",
+            detail: "외형상 알파벳과 비슷한 유니코드 문자를 섞어 정상 도메인을 사칭하는 호모그래프 공격 가능성이 있습니다."
+          });
+        }
+
+        if (SHORTENER_HOSTS.has(hostname)) {
+          findings.push({
+            id: "url-shortener",
+            severity: "medium",
+            title: "단축 URL 서비스 사용",
+            detail: "단축 링크는 실제 최종 도착 주소를 가립니다. 출처가 불분명한 문자·메신저의 단축 URL은 클릭 전 발신자를 재확인하세요."
+          });
+        }
+
+        var labels = hostname.split(".").filter(Boolean);
+        if (labels.length >= 4 && !isIpv4(hostname)) {
+          findings.push({
+            id: "deep-subdomains",
+            severity: "medium",
+            title: "과도한 서브도메인 계층 (" + labels.length + "단계)",
+            detail: "정상 브랜드 이름을 앞쪽 서브도메인에 배치해 실제 루트 도메인을 숨기는 방식이 자주 사용됩니다."
+          });
+        }
+
+        if (parsed.port && parsed.port !== "443" && parsed.port !== "80") {
+          findings.push({
+            id: "non-standard-port",
+            severity: "medium",
+            title: "비표준 포트(:" + parsed.port + ") 지정",
+            detail: "일반 웹 서비스의 기본 포트(80/443)가 아닌 별도 포트로 연결을 유도합니다."
+          });
+        }
+
+        var tld = labels[labels.length - 1] || "";
+        if (SUSPICIOUS_TLDS.has(tld)) {
+          findings.push({
+            id: "uncommon-tld",
+            severity: "medium",
+            title: "피싱 악용 빈도가 높은 최상위 도메인(." + tld + ")",
+            detail: "'." + tld + "' 도메인은 저비용 대량 등록이 쉬워 스미싱·피싱 캠페인에서 빈번히 관측됩니다."
+          });
+        }
+
+        BRAND_PATTERNS.forEach(function (brand) {
+          if (hostname.indexOf(brand.keyword) !== -1 && !matchesOfficialDomain(hostname, brand.officialDomains)) {
+            findings.push({
+              id: "brand-lookalike-" + brand.keyword,
+              severity: "high",
+              title: brand.label + " 사칭 의심 도메인 패턴",
+              detail: "도메인에 '" + brand.keyword + "' 문자열이 포함되어 있으나 공식 도메인(" + brand.officialDomains.join(", ") + ")과 일치하지 않습니다."
+            });
+          }
+        });
+
+        var redirectParams = REDIRECT_PARAM_KEYS.filter(function (k) {
+          return parsed.searchParams.has(k);
+        });
+        if (redirectParams.length > 0) {
+          findings.push({
+            id: "open-redirect-param",
+            severity: "medium",
+            title: "외부 이동 매개변수(" + redirectParams.join(", ") + ") 포함",
+            detail: "정상 사이트 주소를 경유해 다른 악성 페이지로 리다이렉트하는 파라미터가 포함되어 있는지 확인하세요."
+          });
+        }
+
+        if (parsed.toString().length > 180) {
+          findings.push({
+            id: "long-url",
+            severity: "info",
+            title: "긴 URL 길이 (" + parsed.toString().length + "자)",
+            detail: "모바일 화면에서 실제 도메인 끝부분이 가려질 수 있으므로 호스트명만 따로 확인하는 것이 안전합니다."
+          });
+        }
+
+        var hasHigh = findings.some(function (f) { return f.severity === "high"; });
+        var hasMedium = findings.some(function (f) { return f.severity === "medium"; });
+
+        return {
+          valid: true,
+          normalizedUrl: parsed.toString(),
+          protocol: parsed.protocol,
+          hostname: hostname,
+          port: parsed.port || (parsed.protocol === "https:" ? "443" : parsed.protocol === "http:" ? "80" : "-"),
+          pathname: parsed.pathname || "/",
+          riskSummary: hasHigh ? "위험 신호 감지" : hasMedium ? "주의 필요" : "구조적 특이사항 없음",
+          findings: findings
+        };
+      }
+
+      /* =========================================================
+       * 3. PASSWORD ANALYZER & HIBP K-ANONYMITY (PURE JS)
+       * ========================================================= */
+      var COMMON_WEAK_PASSWORDS = new Set([
+        "123456", "1234567", "12345678", "123456789", "1234567890", "000000", "111111",
+        "123123", "654321", "987654", "password", "passw0rd", "qwerty", "qwertyuiop",
+        "qwerty123", "1q2w3e4r", "1q2w3e4r5t", "q1w2e3r4", "a1b2c3d4", "asdfgh",
+        "zxcvbn", "qweasd", "admin", "administrator", "root", "guest", "default",
+        "letmein", "welcome", "iloveyou", "monkey", "dragon", "sunshine", "princess",
+        "football", "baseball", "superman", "master", "changeme", "trustno1", "abc123",
+        "test1234", "korea", "seoul", "samsung", "kakao", "naver", "love1234", "dkssud", "tkfkdgo"
+      ]);
+
+      var KEYBOARD_WALK_ROWS = [
+        "qwertyuiop", "asdfghjkl", "zxcvbnm", "1234567890",
+        "1qaz2wsx3edc4rfv5tgb6yhn7ujm8ik9ol0p", "1q2w3e4r5t6y7u8i9o0p", "qazwsxedcrfvtgbyhnujmikolp"
+      ];
+
+      function normalizeLeetspeak(input) {
+        return input
+          .toLowerCase()
+          .replace(/@/g, "a")
+          .replace(/0/g, "o")
+          .replace(/[1!|]/g, "i")
+          .replace(/3/g, "e")
+          .replace(/4/g, "a")
+          .replace(/[5$]/g, "s")
+          .replace(/7/g, "t")
+          .replace(/9/g, "g");
+      }
+
+      function hasConsecutiveCodeSequence(input, minRun) {
+        if (input.length < minRun) return false;
+        var lower = input.toLowerCase();
+        var ascRun = 1;
+        var descRun = 1;
+        for (var i = 1; i < lower.length; i += 1) {
+          var prev = lower.charCodeAt(i - 1);
+          var curr = lower.charCodeAt(i);
+          var okPrev = (prev >= 48 && prev <= 57) || (prev >= 97 && prev <= 122);
+          var okCurr = (curr >= 48 && curr <= 57) || (curr >= 97 && curr <= 122);
+          if (okPrev && okCurr && curr - prev === 1) {
+            ascRun += 1;
+            descRun = 1;
+          } else if (okPrev && okCurr && prev - curr === 1) {
+            descRun += 1;
+            ascRun = 1;
+          } else {
+            ascRun = 1;
+            descRun = 1;
+          }
+          if (ascRun >= minRun || descRun >= minRun) return true;
+        }
+        return false;
+      }
+
+      function hasKeyboardWalk(input, minLen) {
+        var lower = input.toLowerCase();
+        if (lower.length < minLen) return false;
+        for (var r = 0; r < KEYBOARD_WALK_ROWS.length; r += 1) {
+          var row = KEYBOARD_WALK_ROWS[r];
+          var rev = row.split("").reverse().join("");
+          for (var i = 0; i <= row.length - minLen; i += 1) {
+            var s1 = row.slice(i, i + minLen);
+            var s2 = rev.slice(i, i + minLen);
+            if (lower.indexOf(s1) !== -1 || lower.indexOf(s2) !== -1) return true;
+          }
+        }
+        return false;
+      }
+
+      function isWebCryptoSha1Supported() {
+        return (
+          typeof window !== "undefined" &&
+          typeof window.crypto !== "undefined" &&
+          typeof window.crypto.subtle !== "undefined" &&
+          typeof window.crypto.subtle.digest === "function" &&
+          typeof TextEncoder !== "undefined"
+        );
+      }
+
+      function analyzePasswordStructure(password) {
+        var length = password.length;
+        var uniqueChars = new Set(password).size;
+        var hasLower = /[a-z]/.test(password);
+        var hasUpper = /[A-Z]/.test(password);
+        var hasDigit = /\d/.test(password);
+        var hasSymbol = /[^a-zA-Z0-9]/.test(password);
+
+        var lower = password.toLowerCase();
+        var strippedAlpha = lower.replace(/[^a-z0-9]/g, "");
+        var normalizedLeet = normalizeLeetspeak(password);
+        var strippedBase = lower.replace(/^[^a-z]+|[\d!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+$/g, "");
+        var normalizedBase = normalizeLeetspeak(strippedBase);
+
+        var isCommonPassword =
+          COMMON_WEAK_PASSWORDS.has(lower) ||
+          COMMON_WEAK_PASSWORDS.has(strippedAlpha) ||
+          COMMON_WEAK_PASSWORDS.has(normalizedLeet) ||
+          (strippedBase.length >= 4 && COMMON_WEAK_PASSWORDS.has(strippedBase)) ||
+          (normalizedBase.length >= 4 && COMMON_WEAK_PASSWORDS.has(normalizedBase));
+
+        if (!isCommonPassword && length >= 4) {
+          COMMON_WEAK_PASSWORDS.forEach(function (weak) {
+            if (!isCommonPassword && weak.length >= 5 && (lower.indexOf(weak) !== -1 || normalizedLeet.indexOf(weak) !== -1)) {
+              isCommonPassword = true;
+            }
+          });
+        }
+
+        var hasSequentialPattern = hasConsecutiveCodeSequence(password, 4) || hasKeyboardWalk(password, 4);
+        var hasRepeatedChars =
+          /(.)\1\1/.test(password) ||
+          /(.{2,4})\1+/.test(lower) ||
+          (length >= 6 && uniqueChars <= Math.max(3, Math.floor(length * 0.4)));
+        var hasPredictablePattern =
+          /^[a-zA-Z]{2,12}\d{1,6}[!@#$%^&*?]*$/.test(password) ||
+          /^(19\d\d|20[0-3]\d)/.test(password) ||
+          /(19\d\d|20[0-3]\d)$/.test(password);
+
+        var detectedPatterns = [];
+        if (isCommonPassword) {
+          detectedPatterns.push("흔히 쓰이는 취약 비밀번호 또는 치환 문자(p@ssw0rd 등)가 포함되어 있습니다.");
+        }
+        if (hasSequentialPattern) {
+          detectedPatterns.push("연속된 숫자·알파벳(1234, abcd, 9876) 또는 키보드 배열(qwer, asdf) 패턴이 감지되었습니다.");
+        }
+        if (hasRepeatedChars) {
+          detectedPatterns.push("동일 문자의 3회 이상 연속, 반복 구간(abab, 1212), 또는 적은 고유 문자 수가 감지되었습니다.");
+        }
+        if (hasPredictablePattern) {
+          detectedPatterns.push("영문 단어 뒤에 숫자·특수문자나 연도를 붙이는 예측 가능한 조합 패턴이 감지되었습니다.");
+        }
+
+        var charsetSize = 0;
+        if (hasLower) charsetSize += 26;
+        if (hasUpper) charsetSize += 26;
+        if (hasDigit) charsetSize += 10;
+        if (hasSymbol) charsetSize += 32;
+
+        var rawEntropy = charsetSize > 0 ? Math.round(uniqueChars * Math.log2(charsetSize) + Math.max(0, length - uniqueChars) * 1.5) : 0;
+        var penalty = (isCommonPassword ? 35 : 0) + (hasSequentialPattern ? 18 : 0) + (hasRepeatedChars ? 16 : 0) + (hasPredictablePattern ? 14 : 0);
+        var estimatedEntropyBits = Math.max(0, rawEntropy - penalty);
+
+        var suggestions = [];
+        if (isCommonPassword) suggestions.push("흔히 알려진 단어나 치환(예: @→a, 0→o) 기반 문자열은 즉시 제외하세요.");
+        if (hasSequentialPattern) suggestions.push("1234, 9876, abcd, qwerty 같은 연속·키보드 배열 패턴을 사용하지 마세요.");
+        if (hasRepeatedChars) suggestions.push("동일 문자나 짧은 문자열 반복 없이 무작위성이 높은 문구를 사용하세요.");
+        if (hasPredictablePattern) suggestions.push("단어 뒤에 연도·숫자·느낌표 하나만 붙이는 익숙한 변형 규칙을 피하세요.");
+        if (length < 12) suggestions.push("최소 12~16자 이상으로 길이를 충분히 확보하세요.");
+        if (!hasUpper || !hasLower) suggestions.push("영문 대문자와 소문자를 함께 조합하세요.");
+        if (!hasDigit) suggestions.push("숫자를 포함하세요.");
+        if (!hasSymbol) suggestions.push("특수문자(!@#$ 등)를 포함하세요.");
+        suggestions.push("숫자·대소문자 조합만으로는 안전이 100% 보장되지 않으며, 사이트마다 고유한 비밀번호를 사용하세요.");
+
+        var hasWeakness = isCommonPassword || hasSequentialPattern || hasRepeatedChars || hasPredictablePattern;
+        var classCount = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
+
+        var strengthLabel = "매우 취약";
+        if (isCommonPassword || length < 8 || uniqueChars < 4) {
+          strengthLabel = "매우 취약";
+        } else if (hasSequentialPattern || hasRepeatedChars || hasPredictablePattern || length < 10) {
+          strengthLabel = "취약";
+        } else if (length >= 14 && uniqueChars >= 10 && classCount >= 3 && !hasWeakness && estimatedEntropyBits >= 68) {
+          strengthLabel = "높은 복잡도";
+        } else if (length >= 10 && uniqueChars >= 7 && !hasWeakness) {
+          strengthLabel = "보통";
+        } else {
+          strengthLabel = "취약";
+        }
+
+        return {
+          length: length,
+          uniqueChars: uniqueChars,
+          hasLower: hasLower,
+          hasUpper: hasUpper,
+          hasDigit: hasDigit,
+          hasSymbol: hasSymbol,
+          detectedPatterns: detectedPatterns,
+          estimatedEntropyBits: estimatedEntropyBits,
+          strengthLabel: strengthLabel,
+          suggestions: suggestions
+        };
+      }
+
+      function evaluatePasswordSafety(structure, hibp) {
+        if (hibp && hibp.status === "checked-leaked") {
+          var countLabel = hibp.breachCount !== null ? hibp.breachCount.toLocaleString("ko-KR") + "회" : "다수";
+          return {
+            level: "danger",
+            title: "위험 - 사용 금지",
+            summary: "로컬 복잡도(" + structure.strengthLabel + ")나 추정 엔트로피 수치와 관계없이 HIBP 유출 데이터에서 " + countLabel + " 발견된 비밀번호입니다.",
+            recommendation: "크리덴셜 스터핑 공격에 즉시 악용될 수 있으므로 사용 중인 모든 계정에서 즉시 폐기하고 새로운 무작위 비밀번호로 변경하세요."
+          };
+        }
+
+        if (hibp && hibp.status === "checked-safe") {
+          if (structure.strengthLabel === "매우 취약" || structure.strengthLabel === "취약") {
+            return {
+              level: "warning",
+              title: "취약 - 즉시 개선 권장",
+              summary: "HIBP 공개 유출 목록에서는 발견되지 않았으나, 로컬 구조 분석 결과 '" + structure.strengthLabel + "' 수준으로 추측 공격에 약합니다.",
+              recommendation: "유출 목록 미발견이 안전을 100% 보장하지 않습니다. 취약 패턴을 제거하고 14자 이상의 고유한 비밀번호로 교체하세요."
+            };
+          }
+          if (structure.strengthLabel === "보통") {
+            return {
+              level: "caution",
+              title: "유출 미발견 · 추가 강화 권장",
+              summary: "HIBP 공개 유출 데이터에서 일치 항목은 없었으나, 길이와 무작위성을 더 높여야 하며 안전이 100% 보장되지는 않습니다.",
+              recommendation: "숫자·대소문자 조합만으로 안전하지 않으므로 14자 이상으로 늘리고 서비스마다 서로 다른 비밀번호를 사용하세요."
+            };
+          }
+          return {
+            level: "caution",
+            title: "유출 미발견 · 복잡도 높음 (100% 안전 보장 아님)",
+            summary: "HIBP 공개 유출 DB에서 발견되지 않았고 로컬 구조 복잡도가 높지만, 비공개 유출이나 타 사이트 재사용 위험까지 안전이 보장되지는 않습니다.",
+            recommendation: "이 비밀번호를 다른 서비스에 재사용하지 말고 가능하면 2단계 인증(MFA)을 함께 활성화하세요."
+          };
+        }
+
+        return {
+          level: "unverified",
+          title: (structure.strengthLabel === "매우 취약" || structure.strengthLabel === "취약")
+            ? "로컬 구조 취약 · 외부 유출 조회 불가"
+            : "외부 유출 여부 조회 불가",
+          summary: hibp && hibp.status === "error"
+            ? "외부 HIBP 유출 DB 조회에 실패하여 실제 유출 여부를 확인하지 못했습니다. 로컬 결과만으로 안전 여부를 판단할 수 없습니다."
+            : "외부 HIBP 유출 DB 조회가 비활성화되어 로컬 구조 분석만 수행했습니다. 실제 유출 여부는 확인되지 않았습니다.",
+          recommendation: hibp && hibp.status === "error"
+            ? "인터넷 연결 상태를 확인한 뒤 '유출 조회 다시 시도' 버튼을 눌러 주세요."
+            : "유출 여부를 함께 확인하려면 HIBP 유출 DB 조회 옵션을 켜고 다시 검사하세요."
+        };
+      }
+
+      async function sha1HexUpper(input) {
+        if (!isWebCryptoSha1Supported()) throw new Error("WEB_CRYPTO_UNSUPPORTED");
+        var data = new TextEncoder().encode(input);
+        var digest = await window.crypto.subtle.digest("SHA-1", data);
+        var bytes = new Uint8Array(digest);
+        var hex = "";
+        for (var i = 0; i < bytes.length; i += 1) {
+          hex += bytes[i].toString(16).padStart(2, "0");
+        }
+        return hex.toUpperCase();
+      }
+
+      async function checkHibpKAnonymity(password) {
+        if (!isWebCryptoSha1Supported()) {
+          return {
+            status: "error",
+            breachCount: null,
+            hashPrefix: "",
+            errorMessage: "현재 브라우저 환경에서 Web Crypto API(SHA-1)를 사용할 수 없어 조회가 불가합니다."
+          };
+        }
+
+        var fullHash = "";
+        try {
+          fullHash = await sha1HexUpper(password);
+        } catch (e) {
+          return {
+            status: "error",
+            breachCount: null,
+            hashPrefix: "",
+            errorMessage: "브라우저 내 SHA-1 해시 계산 중 오류가 발생했습니다."
+          };
+        }
+
+        var prefix = fullHash.slice(0, 5);
+        var suffix = fullHash.slice(5);
+        fullHash = "";
+
+        if (!/^[0-9A-F]{5}$/.test(prefix) || !/^[0-9A-F]{35}$/.test(suffix)) {
+          return {
+            status: "error",
+            breachCount: null,
+            hashPrefix: "",
+            errorMessage: "SHA-1 해시 형식 검증에 실패했습니다."
+          };
+        }
+
+        var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        var timeoutId = controller ? setTimeout(function () { controller.abort(); }, 8000) : null;
+
+        try {
+          var response = await fetch("https://api.pwnedpasswords.com/range/" + prefix, {
+            method: "GET",
+            cache: "no-store",
+            headers: { "Add-Padding": "true" },
+            signal: controller ? controller.signal : undefined
+          });
+
+          if (!response.ok) {
+            return {
+              status: "error",
+              breachCount: null,
+              hashPrefix: prefix,
+              errorMessage: "HIBP API 응답 오류로 조회 불가 (HTTP " + response.status + ")"
+            };
+          }
+
+          var text = await response.text();
+          var lines = text.split(/\r?\n/);
+          for (var i = 0; i < lines.length; i += 1) {
+            var parts = lines[i].split(":");
+            if (parts[0] && parts[0].trim().toUpperCase() === suffix) {
+              var count = parseInt((parts[1] || "0").trim(), 10);
+              if (Number.isFinite(count) && count > 0) {
+                return { status: "checked-leaked", breachCount: count, hashPrefix: prefix };
+              }
+            }
+          }
+
+          return { status: "checked-safe", breachCount: 0, hashPrefix: prefix };
+        } catch (err) {
+          var isTimeout = err && err.name === "AbortError";
+          return {
+            status: "error",
+            breachCount: null,
+            hashPrefix: prefix,
+            errorMessage: isTimeout
+              ? "외부 유출 DB 응답 시간이 초과되어 조회할 수 없습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요."
+              : "인터넷 연결 없음 또는 네트워크 차단으로 HIBP 외부 조회에 실패했습니다(조회 불가)."
+          };
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId);
+        }
+      }
+
+      /* =========================================================
+       * 4. RULE-BASED PHISHING & SMISHING ANALYZER (PURE JS)
+       * ========================================================= */
+      var NEGATION_SUFFIX_REGEX = /^\s*(?:이|가|은|는|을|를)?\s*(?:없이|없음|없으며|않습니다|하지\s*마|불필요|안\s*합니다)/;
+      var PHISHING_RULES = [
+        {
+          id: "credential-otp-request",
+          category: "credential",
+          severity: "high",
+          title: "인증번호·비밀번호·계좌정보 요구 표현 감지",
+          detail: "정상 기관·은행·택배사는 문자나 메신저로 비밀번호, 보안카드, 인증번호 입력을 요구하지 않습니다.",
+          regex: /(?:인증번호|보안카드|비밀번호|핀번호|PIN|OTP|CVC|주민등록번호|신분증\s*(?:사진|사본|촬영|첨부)|계좌\s*(?:번호|비밀번호)|카드\s*비밀번호)(?:\s*(?:입력|전달|알려|보내|회신|확인|등록|기재|제출))?/gi,
+          ignoreIfNegated: true
+        },
+        {
+          id: "personal-info-request",
+          category: "credential",
+          severity: "high",
+          title: "개인정보 입력·확인 유도 문구 감지",
+          detail: "외부 링크나 회신을 통해 민감한 개인정보를 입력하도록 유도하는 표현이 포함되어 있습니다.",
+          regex: /(?:개인정보|본인인증|본인확인|계정정보)\s*(?:입력|수정|갱신|업데이트|제출|확인해)/gi,
+          ignoreIfNegated: true
+        },
+        {
+          id: "remote-app-or-apk",
+          category: "remote-app",
+          severity: "high",
+          title: "원격 제어 앱·외부 설치 파일(.apk) 유도 감지",
+          detail: "원격 제어 앱이나 공식 스토어 외 APK 파일 설치 유도는 금융 탈취 스미싱의 전형적인 수법입니다.",
+          regex: /(?:\.apk\b|원격\s*(?:앱|어플|지원|제어|프로그램)|팀뷰어|teamviewer|anydesk|애니데스크|설치\s*(?:후|해\s*주|바랍니다|요망)|앱\s*다운로드)/gi,
+          ignoreIfNegated: true
+        },
+        {
+          id: "impersonation-delivery",
+          category: "impersonation",
+          severity: "medium",
+          title: "택배·배송·통관 사칭 의심 문구 감지",
+          detail: "주소 불일치, 반송, 보관, 통관 수수료 등을 빌미로 링크 클릭을 유도하는 택배 사칭 스미싱에서 자주 쓰이는 표현입니다.",
+          regex: /(?:택배|운송장|배송\s*(?:지연|보류|오류|불가|완료)|주소\s*(?:불일치|오류|변경|수정)|미배달|보관\s*중|반송\s*(?:처리|예정)|통관\s*(?:보류|수수료)|CJ대한통운|한진택배|로젠택배|우체국택배)/gi
+        },
+        {
+          id: "impersonation-finance",
+          category: "impersonation",
+          severity: "medium",
+          title: "금융기관·카드 승인·대출 사칭 의심 문구 감지",
+          detail: "해외결제 승인 알림, 저금리 대환대출, 계좌 정지 안내를 사칭해 가짜 고객센터나 피싱 사이트로 유도하는 사례가 많습니다.",
+          regex: /(?:해외\s*결제|승인\s*(?:완료|금액|알림)|결제\s*승인|저금리\s*(?:대출|대환)|정부\s*지원\s*대출|한도\s*조회|계좌\s*(?:정지|동결|차단)|지급\s*정지|금융감독원|금감원|카드사|국민은행|신한은행|신한카드|우리은행|하나은행|농협|카카오뱅크|토스뱅크)/gi
+        },
+        {
+          id: "impersonation-gov",
+          category: "impersonation",
+          severity: "medium",
+          title: "공공기관·법률·과태료 사칭 의심 문구 감지",
+          detail: "검찰·경찰·법원·국세청·과태료·미납 고지를 사칭해 심리적 압박을 주는 스미싱 패턴입니다.",
+          regex: /(?:검찰|경찰청|사이버수사대|법원\s*(?:등기|통지)|소환장|출석요구|국세청|세금\s*체납|과태료|범칙금|민원24|정부24|건강보험공단|국민건강보험|압류\s*(?:예정|통지)|형사\s*처벌)/gi
+        },
+        {
+          id: "impersonation-family",
+          category: "impersonation",
+          severity: "high",
+          title: "지인·가족 사칭 메신저 피싱 표현 감지",
+          detail: "휴대전화 고장·임시폰을 이유로 금전, 상품권, 인증, 앱 설치를 요청하는 메신저 피싱 수법일 가능성이 있습니다.",
+          regex: /(?:(?:엄마|아빠|어머니|아버지|이모|삼촌).{0,25}(?:액정|수리|임시폰|고장|폰\s*바|대신|상품권|기프트)|임시폰이라|액정\s*깨져서|기프트카드\s*(?:구매|핀번호)|문화상품권\s*(?:구매|핀))/gi
+        },
+        {
+          id: "urgency-pressure",
+          category: "urgency",
+          severity: "medium",
+          title: "긴급 행동 요구·불이익 경고 표현 감지",
+          detail: "즉각적인 클릭이나 회신을 압박해 사실 확인을 방해하는 심리적 유도 표현이 포함되어 있습니다.",
+          regex: /(?:즉시|긴급|지금\s*바로|당일\s*(?:내|까지)|오늘\s*\d{1,2}시\s*까지|\d+\s*시간\s*이내|마감\s*임박|미확인\s*시|미완료\s*시|미조치\s*시|자동\s*(?:결제|해지|취소)|계정\s*(?:정지|삭제|제한)|법적\s*조치|불이익)/gi
+        },
+        {
+          id: "sender-prefix-warning",
+          category: "sender",
+          severity: "medium",
+          title: "국제발신 또는 웹발신 헤더 표기 포함",
+          detail: "[국제발신]·[Web발신] 표기가 붙은 메시지가 국내 기관·택배·금융사를 주장할 경우 사칭 여부를 반드시 확인해야 합니다.",
+          regex: /\[(?:국제발신|국외발신|Web발신|웹발신)\]/gi
+        }
+      ];
+
+      function extractUrlsFromText(text) {
+        var results = [];
+        var seen = new Set();
+        var explicitUrlRegex = /https?:\/\/[^\s<>"')\]]+/gi;
+        var domainHintRegex = /(?:^|[\s(])((?:www\.)?[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.(?:com|net|org|kr|co\.kr|go\.kr|or\.kr|top|xyz|click|tk|ml|ga|cf|gq|icu|buzz|work|rest|zip|mov|ly|gl|do|la)(?:\/[^\s<>"')\]]*)?)/gi;
+
+        function cleanTrailing(raw) {
+          return raw.replace(/[.,!?;:'")\]}]+$/, "");
+        }
+
+        var match;
+        while ((match = explicitUrlRegex.exec(text)) !== null) {
+          var cleaned = cleanTrailing(match[0]);
+          if (cleaned && !seen.has(cleaned)) {
+            seen.add(cleaned);
+            results.push(cleaned);
+            if (results.length >= 10) return results;
+          }
+        }
+
+        while ((match = domainHintRegex.exec(text)) !== null) {
+          var candidate = cleanTrailing(match[1] || "");
+          if (!candidate) continue;
+          var alreadyCovered = results.some(function (u) { return u.indexOf(candidate) !== -1; });
+          if (!alreadyCovered && !seen.has(candidate)) {
+            seen.add(candidate);
+            results.push(candidate);
+            if (results.length >= 10) return results;
+          }
+        }
+
+        return results;
+      }
+
+      function analyzePhishingMessageLocally(rawMessage, senderContext) {
+        var trimmed = String(rawMessage || "").trim();
+        var trimmedSender = String(senderContext || "").trim();
+        var maxChars = 10000;
+
+        if (!trimmed) {
+          return {
+            riskLevel: "판단 불가",
+            summary: "입력된 메시지가 없어 피싱 여부를 분석할 수 없습니다.",
+            signals: [],
+            extractedUrls: [],
+            safeIndicators: [],
+            recommendedActions: ["검사할 문자·메신저·이메일 본문을 입력한 뒤 다시 시도해 주세요."],
+            charCount: 0,
+            wasTruncated: false
+          };
+        }
+
+        var wasTruncated = trimmed.length > maxChars;
+        var scoped = wasTruncated ? trimmed.slice(0, maxChars) : trimmed;
+        var combined = (trimmedSender ? "[발신상황] " + trimmedSender + "\n" : "") + scoped;
+        var meaningful = scoped.replace(/[\s.,!?;:'"()\[\]{}\-_~@#$%^&*+=<>\/\\|]/g, "");
+        var extractedRawUrls = extractUrlsFromText(scoped);
+
+        if (meaningful.length < 8 && extractedRawUrls.length === 0) {
+          return {
+            riskLevel: "판단 불가",
+            summary: "메시지가 너무 짧거나 문맥 정보가 부족해 규칙 기반 분석으로 위험 여부를 판단할 수 없습니다.",
+            signals: [],
+            extractedUrls: [],
+            safeIndicators: [],
+            recommendedActions: [
+              "앞뒤 문장과 발신자 정보, 포함된 링크를 함께 입력해 다시 확인해 주세요.",
+              "출처가 확실하지 않다면 링크 클릭이나 회신을 삼가세요."
+            ],
+            charCount: trimmed.length,
+            wasTruncated: wasTruncated
+          };
+        }
+
+        var extractedUrls = extractedRawUrls.map(function (rawUrl) {
+          return { rawUrl: rawUrl, analysis: analyzeUrlStructure(rawUrl) };
+        });
+
+        var signals = [];
+        PHISHING_RULES.forEach(function (rule) {
+          rule.regex.lastIndex = 0;
+          var matchedTerms = [];
+          var m;
+          while ((m = rule.regex.exec(combined)) !== null) {
+            var term = m[0].trim();
+            var afterSlice = combined.slice(m.index + m[0].length, m.index + m[0].length + 24);
+            if (rule.ignoreIfNegated && NEGATION_SUFFIX_REGEX.test(afterSlice)) {
+              continue;
+            }
+            if (term && matchedTerms.indexOf(term) === -1) {
+              matchedTerms.push(term);
+            }
+            if (matchedTerms.length >= 4) break;
+          }
+          if (matchedTerms.length > 0) {
+            signals.push({
+              id: rule.id,
+              category: rule.category,
+              severity: rule.severity,
+              title: rule.title,
+              evidence: matchedTerms.map(function (t) { return '"' + t + '"'; }).join(", "),
+              detail: rule.detail
+            });
+          }
+        });
+
+        extractedUrls.forEach(function (item) {
+          if (!item.analysis.valid) {
+            signals.push({
+              id: "url-invalid",
+              category: "url",
+              severity: "medium",
+              title: "비정상 또는 해석 불완전한 URL 포함",
+              evidence: item.rawUrl,
+              detail: item.analysis.errorMessage || "주소 형식이 비표준이므로 클릭하지 마세요."
+            });
+            return;
+          }
+          var highs = item.analysis.findings.filter(function (f) { return f.severity === "high"; });
+          var meds = item.analysis.findings.filter(function (f) { return f.severity === "medium"; });
+          if (highs.length > 0) {
+            signals.push({
+              id: "url-high",
+              category: "url",
+              severity: "high",
+              title: "고위험 URL 구조 탐지 (" + item.analysis.hostname + ")",
+              evidence: item.rawUrl + " → " + highs.map(function (f) { return f.title; }).join(", "),
+              detail: "포함된 링크에서 사칭·IP·비표준 구조 등 강한 위험 신호가 확인되었습니다."
+            });
+          } else if (meds.length > 0) {
+            signals.push({
+              id: "url-med",
+              category: "url",
+              severity: "medium",
+              title: "주의가 필요한 URL 포함 (" + item.analysis.hostname + ")",
+              evidence: item.rawUrl + " → " + meds.map(function (f) { return f.title; }).join(", "),
+              detail: "HTTP 미암호화, 단축 URL 또는 의심 최상위 도메인 등 확인이 필요한 링크입니다."
+            });
+          } else {
+            signals.push({
+              id: "url-info",
+              category: "url",
+              severity: "info",
+              title: "외부 URL 포함 (" + item.analysis.hostname + ")",
+              evidence: item.rawUrl,
+              detail: "URL 구조 자체의 특이사항은 없으나 접속 전 발신 기관 공식 도메인인지 확인하세요."
+            });
+          }
+        });
+
+        var score = 0;
+        var highCount = 0;
+        var medCount = 0;
+        signals.forEach(function (s) {
+          if (s.severity === "high") { score += 3; highCount += 1; }
+          else if (s.severity === "medium") { score += 2; medCount += 1; }
+          else { score += 1; }
+        });
+
+        var hasImp = signals.some(function (s) { return s.category === "impersonation"; });
+        var hasUrg = signals.some(function (s) { return s.category === "urgency"; });
+        var hasCred = signals.some(function (s) { return s.category === "credential" || s.category === "remote-app"; });
+        if (hasImp && (extractedUrls.length > 0 || hasCred)) score += 2;
+        if (hasUrg && (extractedUrls.length > 0 || hasCred || hasImp)) score += 1;
+
+        var riskLevel = "낮음";
+        if (score >= 5 || highCount >= 2 || (highCount >= 1 && medCount >= 1)) riskLevel = "높음";
+        else if (score >= 2 || highCount >= 1 || medCount >= 1) riskLevel = "주의";
+
+        if (!/[가-힣]{2,}|[a-zA-Z]{3,}/.test(scoped) && extractedUrls.length === 0) {
+          riskLevel = "판단 불가";
+        }
+
+        var safeIndicators = [];
+        if (extractedUrls.length === 0) safeIndicators.push("본문에서 외부 클릭 유도 URL이 탐지되지 않았습니다.");
+        if (!hasCred) safeIndicators.push("인증번호·비밀번호·원격제어 앱 설치 요구 키워드가 탐지되지 않았습니다.");
+        if (!hasImp) safeIndicators.push("주요 택배·금융·공공기관 사칭 패턴이 탐지되지 않았습니다.");
+
+        var summary = "";
+        var recommendedActions = [];
+        if (riskLevel === "높음") {
+          summary = "규칙 기반 분석 결과 사칭·긴급 압박·민감정보 요구 또는 위험 URL 등 스미싱·피싱 의심 신호가 다수 감지되었습니다.";
+          recommendedActions.push("메시지에 포함된 링크나 전화번호를 절대 클릭하거나 회신하지 마세요.");
+          recommendedActions.push("택배·은행·공공기관 안내라면 해당 공식 앱을 직접 실행하거나 대표번호로 사실 여부를 확인하세요.");
+          recommendedActions.push("이미 링크를 눌렀거나 앱을 설치했다면 모바일 백신 검사 및 금융기관 지급정지(112/1332)를 진행하세요.");
+        } else if (riskLevel === "주의") {
+          summary = "규칙 기반 분석 결과 일부 의심 키워드 또는 외부 링크가 포함되어 있어 추가 확인이 필요합니다.";
+          recommendedActions.push("발신 번호와 공식 도메인이 일치하는지 검색이나 공식 앱을 통해 먼저 확인하세요.");
+          recommendedActions.push("URL이 포함되어 있다면 'URL 검사' 메뉴에서 도메인 구조를 다시 확인하세요.");
+          recommendedActions.push("확신이 서지 않을 경우 개인정보·인증번호 입력 및 파일 다운로드를 중단하세요.");
+        } else if (riskLevel === "판단 불가") {
+          summary = "식별 가능한 문장 맥락이나 URL 정보가 부족해 규칙 기반 분석으로 위험 수준을 판단할 수 없습니다.";
+          recommendedActions.push("메시지 전체 문장과 발신 상황을 함께 붙여넣어 다시 검사해 보세요.");
+          recommendedActions.push("출처를 알 수 없는 발신자라면 공식 채널을 통해 사실 여부를 먼저 확인하세요.");
+        } else {
+          summary = "규칙 기반 분석에서 전형적인 피싱·스미싱 키워드와 위험 링크 패턴이 감지되지 않았습니다.";
+          recommendedActions.push("규칙 기반 검사는 신종 사칭 수법을 모두 탐지할 수 없으므로 안전이 100% 보장되지 않습니다.");
+          recommendedActions.push("추후 금전·인증번호·앱 설치를 요구하는 대화가 이어지면 즉시 중단하세요.");
+        }
+
+        if (wasTruncated) {
+          recommendedActions.push("입력 길이가 10,000자를 초과해 앞부분 10,000자만 규칙 분석했습니다.");
+        }
+
+        return {
+          riskLevel: riskLevel,
+          summary: summary,
+          signals: signals,
+          extractedUrls: extractedUrls,
+          safeIndicators: safeIndicators,
+          recommendedActions: recommendedActions,
+          charCount: trimmed.length,
+          wasTruncated: wasTruncated
+        };
+      }
+
+      /* =========================================================
+       * 5. SINGLE-FILE VIEW ROUTER & DOM CONTROLLERS
+       * ========================================================= */
+      var VALID_VIEWS = ["home", "url-check", "password-check", "phishing-check", "settings"];
+
+      function navigateTo(viewName, updateHash) {
+        if (VALID_VIEWS.indexOf(viewName) === -1) viewName = "home";
+
+        // Clear sensitive password state when navigating away from password-check
+        var pwInputEl = document.getElementById("pw-input");
+        if (viewName !== "password-check" && pwInputEl && pwInputEl.value) {
+          resetPasswordView();
+        }
+
+        VALID_VIEWS.forEach(function (v) {
+          var sec = document.getElementById("view-" + v);
+          if (sec) sec.classList.toggle("active", v === viewName);
+        });
+
+        document.querySelectorAll("[data-nav]").forEach(function (el) {
+          var target = el.getAttribute("data-nav");
+          if (el.classList.contains("nav-btn") || el.classList.contains("mobile-tab")) {
+            if (target === viewName) {
+              el.setAttribute("aria-current", "page");
+            } else {
+              el.removeAttribute("aria-current");
+            }
+          }
+        });
+
+        if (updateHash !== false) {
+          try {
+            window.location.hash = viewName === "home" ? "#home" : "#" + viewName;
+          } catch (e) {
+            /* Ignore hash restriction */
+          }
+        }
+        window.scrollTo(0, 0);
+      }
+
+      document.querySelectorAll("[data-nav]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var targetView = btn.getAttribute("data-nav");
+          var scrollTargetId = btn.getAttribute("data-scroll-target");
+          navigateTo(targetView);
+          if (scrollTargetId) {
+            setTimeout(function () {
+              var targetEl = document.getElementById(scrollTargetId);
+              if (targetEl && typeof targetEl.scrollIntoView === "function") {
+                targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }, 40);
+          }
+        });
+      });
+
+      window.addEventListener("hashchange", function () {
+        var hashView = (window.location.hash || "").replace(/^#/, "");
+        if (VALID_VIEWS.indexOf(hashView) !== -1) {
+          navigateTo(hashView, false);
+        }
+      });
+
+      /* ----- Home History Rendering ----- */
+      function renderHomeHistory() {
+        var card = document.getElementById("home-history-card");
+        var list = document.getElementById("home-history-list");
+        var items = loadLocalHistory().slice(0, 3);
+        if (!card || !list) return;
+        if (items.length === 0) {
+          card.classList.add("hidden");
+          list.innerHTML = "";
+          return;
+        }
+        card.classList.remove("hidden");
+        list.innerHTML = items.map(function (item) {
+          var cat = item.category === "url" ? "URL 검사" : item.category === "password" ? "비밀번호 검사" : "피싱 규칙 검사";
+          return (
+            '<div class="subcard flex-between">' +
+              '<div style="min-width:0;">' +
+                '<div style="font-size:0.85rem;font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(item.summary) + '</div>' +
+                '<div class="muted-sm" style="margin-top:0.15rem;">' + escapeHtml(cat) + ' · ' + escapeHtml(new Date(item.timestamp).toLocaleString("ko-KR")) + '</div>' +
+              '</div>' +
+              '<span class="text-teal" style="font-size:0.75rem;font-weight:600;white-space:nowrap;flex-shrink:0;">' + escapeHtml(item.outcomeLabel) + '</span>' +
+            '</div>'
+          );
+        }).join("");
+      }
+
+      /* ----- URL Check Controller ----- */
+      var urlInput = document.getElementById("url-input");
+      var urlCharCount = document.getElementById("url-char-count");
+      var urlResetBtn = document.getElementById("url-reset-btn");
+      var urlResultArea = document.getElementById("url-result-area");
+
+      function updateUrlControls() {
+        var len = urlInput.value.length;
+        urlCharCount.textContent = len.toLocaleString("ko-KR") + " / 2,048자";
+        if (len > 0 || urlResultArea.innerHTML !== "") {
+          urlResetBtn.classList.remove("hidden");
+        } else {
+          urlResetBtn.classList.add("hidden");
+        }
+      }
+
+      function renderUrlResult(res) {
+        if (!res.valid) {
+          urlResultArea.innerHTML =
+            '<section class="banner banner-warn" role="alert">' +
+              '<strong>입력한 URL을 검사할 수 없습니다</strong>' +
+              '<div style="margin-top:0.25rem;color:#cbd5e1;">' + escapeHtml(res.errorMessage) + '</div>' +
+            '</section>';
+          updateUrlControls();
+          return;
+        }
+
+        var badgeColor = res.riskSummary === "위험 신호 감지" ? "text-rose" : res.riskSummary === "주의 필요" ? "text-amber" : "text-teal";
+        var findingsHtml = "";
+        if (res.findings.length === 0) {
+          findingsHtml =
+            '<p class="muted-sm" style="line-height:1.6;">' +
+              'HTTPS 프로토콜 사용, IP 직접 접근, Punycode(xn--), @ 기호 혼동 패턴, 사칭 키워드 등 구조상 명백한 의심 신호는 발견되지 않았습니다. 단, 구조적 특이사항이 없더라도 링크의 안전성이 100% 보장되지는 않습니다.' +
+            '</p>';
+        } else {
+          findingsHtml = '<div class="stack-xs">' + res.findings.map(function (f) {
+            var sevLabel = f.severity === "high" ? '<span class="text-rose">높은 위험</span>' : f.severity === "medium" ? '<span class="text-amber">주의</span>' : '<span class="text-sky">참고</span>';
+            return (
+              '<div class="subcard">' +
+                '<div class="flex-between"><strong style="font-size:0.8rem;color:#fff;">' + escapeHtml(f.title) + '</strong><span style="font-size:0.72rem;font-weight:600;">' + sevLabel + '</span></div>' +
+                '<p class="muted-sm" style="margin-top:0.3rem;line-height:1.55;">' + escapeHtml(f.detail) + '</p>' +
+              '</div>'
+            );
+          }).join("") + '</div>';
+        }
+
+        urlResultArea.innerHTML =
+          '<div class="grid-2">' +
+            '<section class="card stack-sm">' +
+              '<div class="flex-between">' +
+                '<h2 class="card-title">로컬 URL 구조 분석</h2>' +
+                '<span class="' + badgeColor + '" style="font-size:0.78rem;font-weight:700;">' + escapeHtml(res.riskSummary) + '</span>' +
+              '</div>' +
+              '<div class="kv-grid divider-top">' +
+                '<div><div class="kv-label">호스트명(도메인)</div><div class="kv-val" style="font-family:var(--font-mono);font-size:0.78rem;">' + escapeHtml(res.hostname) + '</div></div>' +
+                '<div><div class="kv-label">프로토콜 · 포트</div><div class="kv-val tabular-nums" style="font-family:var(--font-mono);font-size:0.78rem;">' + escapeHtml(res.protocol.replace(":", "")) + ' · ' + escapeHtml(res.port) + '</div></div>' +
+              '</div>' +
+              '<div class="divider-top stack-xs">' +
+                '<h3 style="margin:0;font-size:0.875rem;font-weight:600;color:#fff;">의심 신호 및 판단 근거</h3>' +
+                findingsHtml +
+              '</div>' +
+              '<div class="divider-top stack-xs">' +
+                '<h3 style="margin:0;font-size:0.8rem;font-weight:600;color:#bae6fd;">사용자 보안 권장 사항</h3>' +
+                '<ul class="list-clean">' +
+                  '<li>모르는 문자·메신저 링크에서 아이디·비밀번호·계좌정보를 입력하지 마세요.</li>' +
+                  '<li>공식 서비스는 북마크나 공식 앱을 통해 직접 접속해 진위를 확인하세요.</li>' +
+                  '<li>로컬 구조 분석만으로 악성 사이트 여부를 100% 판별할 수 없으므로 주의하세요.</li>' +
+                '</ul>' +
+              '</div>' +
+            '</section>' +
+            '<section class="card stack-sm">' +
+              '<div class="flex-between">' +
+                '<h2 class="card-title">외부 위협 데이터베이스 조회</h2>' +
+                '<span class="muted-sm">Google Safe Browsing</span>' +
+              '</div>' +
+              '<div class="divider-top stack-sm">' +
+                '<div class="banner banner-warn">' +
+                  '<strong style="color:#fde68a;">조회 불가 (외부 위협 DB 미연결)</strong>' +
+                  '<div style="margin-top:0.35rem;color:#cbd5e1;">' +
+                    'Google Safe Browsing API는 비밀 API 키 보호를 위해 백엔드 서버가 필요합니다. 단일 HTML 정적 제출 버전에서는 외부 API를 호출하지 않고 <strong>조회 불가</strong> 상태로 정확히 안내합니다.' +
+                  '</div>' +
+                '</div>' +
+                '<p class="muted-sm" style="line-height:1.6;">' +
+                  '외부 위협 목록 확인이 이루어지지 않았으므로 이 URL을 안전하다고 간주할 수 없습니다.' +
+                '</p>' +
+              '</div>' +
+            '</section>' +
+          '</div>';
+
+        appendLocalHistory({
+          category: "url",
+          summary: res.hostname,
+          outcomeLabel: res.riskSummary + " · 외부 조회 불가"
+        });
+        updateUrlControls();
+      }
+
+      urlInput.addEventListener("input", updateUrlControls);
+      document.getElementById("url-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        renderUrlResult(analyzeUrlStructure(urlInput.value));
+      });
+
+      document.querySelectorAll("[data-url-sample]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          urlInput.value = btn.getAttribute("data-url-sample") || "";
+          renderUrlResult(analyzeUrlStructure(urlInput.value));
+        });
+      });
+
+      urlResetBtn.addEventListener("click", function () {
+        urlInput.value = "";
+        urlResultArea.innerHTML = "";
+        updateUrlControls();
+      });
+
+      /* ----- Password Check Controller ----- */
+      var pwInput = document.getElementById("pw-input");
+      var pwToggleBtn = document.getElementById("pw-toggle-btn");
+      var pwEyeOpen = document.getElementById("pw-eye-open");
+      var pwEyeOff = document.getElementById("pw-eye-off");
+      var pwSubmitBtn = document.getElementById("pw-submit-btn");
+      var pwResetBtn = document.getElementById("pw-reset-btn");
+      var pwHibpToggle = document.getElementById("pw-hibp-toggle");
+      var pwResultArea = document.getElementById("pw-result-area");
+      var pwCryptoWarning = document.getElementById("pw-crypto-warning");
+      var lastPwStructure = null;
+      var pwChecking = false;
+
+      if (!isWebCryptoSha1Supported()) {
+        pwCryptoWarning.classList.remove("hidden");
+      }
+
+      function updatePwControls() {
+        var hasVal = pwInput.value.length > 0;
+        pwSubmitBtn.disabled = !hasVal || pwChecking;
+        if (hasVal || pwResultArea.innerHTML !== "") {
+          pwResetBtn.classList.remove("hidden");
+        } else {
+          pwResetBtn.classList.add("hidden");
+        }
+      }
+
+      function resetPasswordView() {
+        pwInput.value = "";
+        pwInput.type = "password";
+        pwEyeOpen.classList.remove("hidden");
+        pwEyeOff.classList.add("hidden");
+        pwToggleBtn.setAttribute("aria-label", "비밀번호 보기");
+        lastPwStructure = null;
+        pwResultArea.innerHTML = "";
+        pwChecking = false;
+        updatePwControls();
+      }
+
+      pwToggleBtn.addEventListener("click", function () {
+        var showing = pwInput.type === "text";
+        pwInput.type = showing ? "password" : "text";
+        pwToggleBtn.setAttribute("aria-label", showing ? "비밀번호 보기" : "비밀번호 숨기기");
+        pwEyeOpen.classList.toggle("hidden", !showing);
+        pwEyeOff.classList.toggle("hidden", showing);
+      });
+
+      pwInput.addEventListener("input", updatePwControls);
+      pwResetBtn.addEventListener("click", resetPasswordView);
+
+      function renderPasswordResults(structure, hibp, isLoading) {
+        var verdict = evaluatePasswordSafety(structure, hibp);
+        var bannerClass = verdict.level === "danger" ? "banner-danger" : verdict.level === "warning" ? "banner-warn" : "banner-info";
+        var titleColor = verdict.level === "danger" ? "text-rose" : verdict.level === "warning" ? "text-amber" : "";
+
+        var hibpBody = "";
+        if (isLoading) {
+          hibpBody =
+            '<p class="text-sky" style="font-size:0.85rem;margin:0;">SHA-1 해시 앞 5자리만 HIBP API로 전송해 대조 중입니다...</p>';
+        } else if (hibp && hibp.status === "checked-leaked") {
+          hibpBody =
+            '<div class="stack-xs">' +
+              '<p class="text-rose" style="margin:0;font-size:0.9rem;font-weight:700;">위험 - 사용 금지 (유출 데이터 <span class="tabular-nums">' + hibp.breachCount.toLocaleString("ko-KR") + '</span>회 발견)</p>' +
+              '<p class="text-sm-body" style="font-size:0.8rem;">로컬 복잡도 점수와 관계없이 과거 유출 목록에 포함된 비밀번호입니다. 사용 중인 모든 서비스에서 즉시 변경하세요.</p>' +
+              '<p class="muted-sm" style="font-family:var(--font-mono);">전송된 접두어: ' + escapeHtml(hibp.hashPrefix) + ' (원문 및 뒤 35자리 미전송)</p>' +
+            '</div>';
+        } else if (hibp && hibp.status === "checked-safe") {
+          hibpBody =
+            '<div class="stack-xs">' +
+              '<p class="text-teal" style="margin:0;font-size:0.9rem;font-weight:700;">알려진 유출 데이터에서 발견되지 않음</p>' +
+              '<p class="text-sm-body" style="font-size:0.8rem;">Have I Been Pwned Range API 조회 결과 공개된 유출 해시와 일치하지 않았습니다.</p>' +
+              '<p class="text-amber" style="margin:0;font-size:0.78rem;line-height:1.55;">주의: 알려진 유출 목록에 없다는 사실이 100% 안전을 보장하지는 않습니다. 비공개 유출이나 재사용 위험이 있으므로 사이트마다 고유 비밀번호를 사용하세요.</p>' +
+              '<p class="muted-sm" style="font-family:var(--font-mono);">전송된 접두어: ' + escapeHtml(hibp.hashPrefix) + ' (원문 및 뒤 35자리 미전송)</p>' +
+            '</div>';
+        } else if (hibp && hibp.status === "error") {
+          hibpBody =
+            '<div class="stack-sm">' +
+              '<div class="banner banner-warn">' +
+                '<strong style="color:#fde68a;">외부 유출 데이터 조회 실패 (조회 불가)</strong>' +
+                '<div style="margin-top:0.25rem;color:#cbd5e1;">' + escapeHtml(hibp.errorMessage) + '</div>' +
+              '</div>' +
+              '<button type="button" id="pw-retry-btn" class="btn btn-sm btn-secondary">유출 조회 다시 시도</button>' +
+            '</div>';
+        } else {
+          hibpBody =
+            '<p class="muted-sm" style="line-height:1.6;">외부 HIBP 유출 DB 조회가 비활성화되어 로컬 구조 분석만 수행했습니다. 외부 유출 여부는 조회 불가(미확인) 상태입니다.</p>';
+        }
+
+        var labelColor = (hibp && hibp.status === "checked-leaked")
+          ? "text-rose"
+          : structure.strengthLabel === "높은 복잡도"
+            ? "text-sky"
+            : structure.strengthLabel === "보통"
+              ? "text-amber"
+              : "text-rose";
+        var localBadgeText = (hibp && hibp.status === "checked-leaked") ? "유출로 무효화됨" : structure.strengthLabel;
+
+        var checkItems = [
+          { label: "영문 소문자", ok: structure.hasLower },
+          { label: "영문 대문자", ok: structure.hasUpper },
+          { label: "숫자 포함", ok: structure.hasDigit },
+          { label: "특수문자 포함", ok: structure.hasSymbol }
+        ].map(function (c) {
+          return '<div style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;color:#e2e8f0;">' +
+            '<span style="color:' + (c.ok ? "#2dd4bf" : "#475569") + ';font-weight:700;">' + (c.ok ? "✓" : "•") + '</span>' +
+            '<span>' + c.label + '</span>' +
+          '</div>';
+        }).join("");
+
+        var patternsHtml = "";
+        if (structure.detectedPatterns.length > 0) {
+          patternsHtml =
+            '<div class="divider-top stack-xs">' +
+              '<div class="text-amber" style="font-size:0.78rem;font-weight:600;">감지된 취약·예측 패턴</div>' +
+              '<ul class="list-clean">' + structure.detectedPatterns.map(function (p) { return '<li>' + escapeHtml(p) + '</li>'; }).join("") + '</ul>' +
+            '</div>';
+        }
+
+        pwResultArea.innerHTML =
+          '<section class="card ' + bannerClass + ' stack-sm" style="border-radius:var(--radius-3xl);">' +
+            '<div class="flex-between">' +
+              '<span class="muted-sm" style="font-weight:600;color:#cbd5e1;">최종 안전성 평가</span>' +
+              '<button type="button" id="pw-banner-clear-btn" class="btn btn-sm btn-secondary">입력 비밀번호 지우기</button>' +
+            '</div>' +
+            '<div>' +
+              '<h2 class="' + titleColor + '" style="margin:0;font-size:1.15rem;font-weight:700;">' + escapeHtml(isLoading ? "유출 여부 조회 중..." : verdict.title) + '</h2>' +
+              '<p class="text-sm-body" style="margin-top:0.35rem;color:#f1f5f9;">' + escapeHtml(isLoading ? "로컬 구조 분석 완료. 외부 HIBP Range API 응답을 기다리고 있습니다." : verdict.summary) + '</p>' +
+              (isLoading ? "" : '<p class="muted-sm" style="margin-top:0.35rem;color:#cbd5e1;line-height:1.55;">' + escapeHtml(verdict.recommendation) + '</p>') +
+            '</div>' +
+          '</section>' +
+          '<div class="grid-2">' +
+            '<section class="card stack-sm">' +
+              '<div class="flex-between">' +
+                '<h2 class="card-title">유출 비밀번호 조회 결과</h2>' +
+                '<span class="muted-sm">HIBP k-Anonymity</span>' +
+              '</div>' +
+              '<div class="divider-top">' + hibpBody + '</div>' +
+            '</section>' +
+            '<section class="card stack-sm">' +
+              '<div class="flex-between">' +
+                '<div>' +
+                  '<h2 class="card-title">로컬 구조 분석 (참고용)</h2>' +
+                  '<p class="muted-sm">문자 조합·엔트로피만으로 안전 여부를 판단하지 않습니다</p>' +
+                '</div>' +
+                '<span class="' + labelColor + '" style="font-size:0.82rem;font-weight:700;white-space:nowrap;">' + escapeHtml(localBadgeText) + '</span>' +
+              '</div>' +
+              '<div class="kv-grid divider-top">' +
+                '<div><div class="kv-label">길이 / 고유 문자</div><div class="kv-val tabular-nums">' + structure.length + '자 (' + structure.uniqueChars + '종)</div></div>' +
+                '<div><div class="kv-label">추정 엔트로피 (참고 정보)</div><div class="kv-val tabular-nums">약 ' + structure.estimatedEntropyBits + ' bits</div></div>' +
+              '</div>' +
+              '<div class="kv-grid divider-top">' + checkItems + '</div>' +
+              patternsHtml +
+              '<div class="divider-top stack-xs">' +
+                '<div class="text-sky" style="font-size:0.78rem;font-weight:600;">개선 권장 사항</div>' +
+                '<ul class="list-clean">' + structure.suggestions.map(function (tip) { return '<li>' + escapeHtml(tip) + '</li>'; }).join("") + '</ul>' +
+              '</div>' +
+            '</section>' +
+          '</div>';
+
+        var retryBtn = document.getElementById("pw-retry-btn");
+        if (retryBtn) {
+          retryBtn.addEventListener("click", runPasswordCheck);
+        }
+        var clearBannerBtn = document.getElementById("pw-banner-clear-btn");
+        if (clearBannerBtn) {
+          clearBannerBtn.addEventListener("click", resetPasswordView);
+        }
+        updatePwControls();
+      }
+
+      async function runPasswordCheck() {
+        var pw = pwInput.value;
+        if (!pw || pwChecking) return;
+
+        lastPwStructure = analyzePasswordStructure(pw);
+        if (!pwHibpToggle.checked) {
+          var skipped = { status: "skipped", breachCount: null, hashPrefix: "" };
+          renderPasswordResults(lastPwStructure, skipped, false);
+          appendLocalHistory({
+            category: "password",
+            summary: "로컬 구조 점검 (" + lastPwStructure.length + "자)",
+            outcomeLabel: lastPwStructure.strengthLabel + " · 유출 미확인"
+          });
+          return;
+        }
+
+        pwChecking = true;
+        updatePwControls();
+        renderPasswordResults(lastPwStructure, null, true);
+
+        var hibpResult = await checkHibpKAnonymity(pw);
+        pwChecking = false;
+        renderPasswordResults(lastPwStructure, hibpResult, false);
+
+        var verdict = evaluatePasswordSafety(lastPwStructure, hibpResult);
+        appendLocalHistory({
+          category: "password",
+          summary: "비밀번호 점검 (" + lastPwStructure.length + "자)",
+          outcomeLabel: hibpResult.status === "checked-leaked"
+            ? "위험 - 사용 금지"
+            : hibpResult.status === "checked-safe"
+              ? lastPwStructure.strengthLabel + " · 유출 미발견"
+              : verdict.title
+        });
+      }
+
+      document.getElementById("pw-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        runPasswordCheck();
+      });
+
+      /* ----- Phishing Check Controller ----- */
+      var PHISHING_SAMPLES = {
+        delivery: {
+          sender: "[국제발신] 모르는 휴대폰 번호",
+          message: "[국제발신] 고객님 택배 주소 불일치로 물품이 보관 중입니다. 오늘 18시까지 주소지 수정 미완료 시 자동 반송 처리됩니다. 운송장 확인: http://kr-delivery-check.top/addr"
+        },
+        finance: {
+          sender: "[Web발신] 카드·은행 사칭 문자",
+          message: "[Web발신] [신한카드] 해외결제 984,000원 승인 완료. 본인 아닐 시 즉시 차단 및 인증번호 확인 필요: http://192.168.10.24/verify"
+        },
+        normal: {
+          sender: "사내 공지",
+          message: "안녕하세요. 이번 주 금요일 오후 3시 정기 보안 점검 안내드립니다. 별도 링크 접속이나 개인정보 입력 없이 사내 포털 공지사항을 확인해 주세요."
+        }
+      };
+
+      var phishingSender = document.getElementById("phishing-sender");
+      var phishingMessage = document.getElementById("phishing-message");
+      var phishingCharCount = document.getElementById("phishing-char-count");
+      var phishingValidation = document.getElementById("phishing-validation-msg");
+      var phishingResetBtn = document.getElementById("phishing-reset-btn");
+      var phishingResultArea = document.getElementById("phishing-result-area");
+
+      function updatePhishingControls() {
+        var len = phishingMessage.value.length;
+        phishingCharCount.textContent = len.toLocaleString("ko-KR") + "자" + (len > 10000 ? " (앞 10,000자 검사)" : "");
+        if (len > 0 || phishingSender.value.length > 0 || phishingResultArea.innerHTML !== "" || !phishingValidation.classList.contains("hidden")) {
+          phishingResetBtn.classList.remove("hidden");
+        } else {
+          phishingResetBtn.classList.add("hidden");
+        }
+      }
+
+      function resetPhishingView() {
+        phishingSender.value = "";
+        phishingMessage.value = "";
+        phishingValidation.classList.add("hidden");
+        phishingValidation.textContent = "";
+        phishingResultArea.innerHTML = "";
+        updatePhishingControls();
+      }
+
+      function renderPhishingResult(res) {
+        var riskColor = res.riskLevel === "높음" ? "text-rose" : res.riskLevel === "주의" ? "text-amber" : res.riskLevel === "판단 불가" ? "text-sky" : "text-teal";
+        var borderStyle = res.riskLevel === "높음" ? "border-color:var(--rose-border);" : res.riskLevel === "주의" ? "border-color:var(--amber-border);" : "";
+
+        var signalsHtml = res.signals.length === 0
+          ? '<p class="muted-sm">정의된 사칭·긴급 압박·인증 요구·의심 URL 규칙과 일치하는 신호가 감지되지 않았습니다.</p>'
+          : '<div class="stack-xs">' + res.signals.map(function (s) {
+              var sev = s.severity === "high" ? '<span class="text-rose">높은 위험 신호</span>' : s.severity === "medium" ? '<span class="text-amber">주의 신호</span>' : '<span class="text-sky">참고 정보</span>';
+              return (
+                '<div class="subcard stack-xs">' +
+                  '<div class="flex-between"><strong style="font-size:0.85rem;color:#fff;">' + escapeHtml(s.title) + '</strong><span style="font-size:0.72rem;font-weight:600;">' + sev + '</span></div>' +
+                  '<div class="text-teal" style="font-size:0.78rem;word-break:break-all;">근거: ' + escapeHtml(s.evidence) + '</div>' +
+                  '<p class="muted-sm" style="line-height:1.55;">' + escapeHtml(s.detail) + '</p>' +
+                '</div>'
+              );
+            }).join("") + '</div>';
+
+        var urlsHtml = res.extractedUrls.length === 0
+          ? '<p class="muted-sm">메시지 본문에서 클릭을 유도하는 URL이 발견되지 않았습니다.</p>'
+          : '<div class="stack-xs">' + res.extractedUrls.map(function (u) {
+              var uBadge = u.analysis.riskSummary === "위험 신호 감지" ? "text-rose" : u.analysis.riskSummary === "주의 필요" ? "text-amber" : "text-teal";
+              var details = !u.analysis.valid
+                ? '<p class="text-amber" style="margin:0.35rem 0 0;font-size:0.78rem;">' + escapeHtml(u.analysis.errorMessage) + '</p>'
+                : u.analysis.findings.length > 0
+                  ? '<ul class="list-clean" style="margin-top:0.35rem;">' + u.analysis.findings.map(function (f) { return '<li><strong style="color:#f1f5f9;">' + escapeHtml(f.title) + ':</strong> ' + escapeHtml(f.detail) + '</li>'; }).join("") + '</ul>'
+                  : '<p class="muted-sm" style="margin-top:0.35rem;">문자열 구조 특이사항은 없으나 직접 접속 전 공식 도메인인지 확인하세요.</p>';
+              return (
+                '<div class="subcard">' +
+                  '<div class="flex-between" style="flex-wrap:wrap;"><code class="text-sky" style="font-size:0.78rem;word-break:break-all;">' + escapeHtml(u.rawUrl) + '</code><span class="' + uBadge + '" style="font-size:0.75rem;font-weight:600;">' + escapeHtml(u.analysis.riskSummary) + '</span></div>' +
+                  details +
+                '</div>'
+              );
+            }).join("") +
+            '<p class="muted-sm" style="font-size:0.72rem;">보안을 위해 추출된 링크에는 직접 접속하지 않았으며 클릭 가능한 링크로 변환하지 않았습니다.</p>' +
+            '</div>';
+
+        phishingResultArea.innerHTML =
+          '<section class="card stack-md" style="' + borderStyle + '">' +
+            '<div class="flex-between" style="border-bottom:1px solid var(--border-subtle);padding-bottom:0.75rem;flex-wrap:wrap;">' +
+              '<span class="text-sky" style="font-size:0.78rem;font-weight:600;">규칙 기반 추정 결과 (브라우저 로컬 분석 · AI 미사용)</span>' +
+              '<button type="button" id="phishing-clear-inline-btn" class="btn btn-sm btn-secondary">내용 지우기</button>' +
+            '</div>' +
+            '<div class="stack-xs">' +
+              '<h2 class="' + riskColor + '" style="margin:0;font-size:1.15rem;font-weight:700;">위험 수준: ' + escapeHtml(res.riskLevel) + '</h2>' +
+              '<p class="text-sm-body" style="color:#f1f5f9;">' + escapeHtml(res.summary) + '</p>' +
+              '<p class="text-amber" style="margin:0;font-size:0.78rem;line-height:1.55;">안내: 이 결과는 키워드·URL 패턴 규칙 기반 추정치이며 100% 정확하지 않습니다. 메시지 내 명령문 실행이나 링크 직접 접속을 하지 않으며 원문은 저장되지 않습니다.</p>' +
+            '</div>' +
+            '<div class="divider-top stack-xs">' +
+              '<h3 style="margin:0;font-size:0.875rem;font-weight:600;color:#fff;">의심 신호 및 판단 근거</h3>' +
+              signalsHtml +
+            '</div>' +
+            '<div class="divider-top stack-xs">' +
+              '<h3 style="margin:0;font-size:0.875rem;font-weight:600;color:#fff;">포함된 URL 자동 확인 (' + res.extractedUrls.length + '건)</h3>' +
+              urlsHtml +
+            '</div>' +
+            (res.safeIndicators.length > 0
+              ? '<div class="divider-top stack-xs"><h3 class="text-teal" style="margin:0;font-size:0.85rem;font-weight:600;">미탐지 항목 (참고)</h3><ul class="list-clean">' + res.safeIndicators.map(function (item) { return '<li>' + escapeHtml(item) + '</li>'; }).join("") + '</ul></div>'
+              : "") +
+            '<div class="divider-top stack-xs">' +
+              '<h3 class="text-sky" style="margin:0;font-size:0.85rem;font-weight:600;">대응 방법 안내</h3>' +
+              '<ul class="list-clean">' + res.recommendedActions.map(function (a) { return '<li>' + escapeHtml(a) + '</li>'; }).join("") + '</ul>' +
+            '</div>' +
+          '</section>';
+
+        var inlineClear = document.getElementById("phishing-clear-inline-btn");
+        if (inlineClear) inlineClear.addEventListener("click", resetPhishingView);
+        updatePhishingControls();
+      }
+
+      phishingMessage.addEventListener("input", function () {
+        if (!phishingValidation.classList.contains("hidden")) {
+          phishingValidation.classList.add("hidden");
+        }
+        updatePhishingControls();
+      });
+      phishingSender.addEventListener("input", updatePhishingControls);
+      phishingResetBtn.addEventListener("click", resetPhishingView);
+
+      document.getElementById("phishing-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        if (!phishingMessage.value.trim()) {
+          phishingResultArea.innerHTML = "";
+          phishingValidation.textContent = "검사할 문자, 메신저 또는 이메일 본문을 입력해 주세요.";
+          phishingValidation.classList.remove("hidden");
+          updatePhishingControls();
+          return;
+        }
+        phishingValidation.classList.add("hidden");
+        var res = analyzePhishingMessageLocally(phishingMessage.value, phishingSender.value);
+        renderPhishingResult(res);
+        appendLocalHistory({
+          category: "phishing",
+          summary: "피싱·스미싱 검사 (" + res.charCount + "자)",
+          outcomeLabel: "규칙 추정: " + res.riskLevel
+        });
+      });
+
+      document.querySelectorAll("[data-phishing-sample]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var key = btn.getAttribute("data-phishing-sample");
+          var sample = PHISHING_SAMPLES[key];
+          if (!sample) return;
+          phishingSender.value = sample.sender;
+          phishingMessage.value = sample.message;
+          phishingValidation.classList.add("hidden");
+          phishingResultArea.innerHTML = "";
+          updatePhishingControls();
+        });
+      });
+
+      /* ----- Settings & Theme Controller ----- */
+      var settingHistoryEl = document.getElementById("setting-history");
+      var settingHibpEl = document.getElementById("setting-hibp");
+      var settingsHistoryCountEl = document.getElementById("settings-history-count");
+      var settingsClearBtn = document.getElementById("settings-clear-history-btn");
+      var settingsFeedbackEl = document.getElementById("settings-feedback");
+      var themeOptionBtns = Array.prototype.slice.call(document.querySelectorAll("[data-theme-choice]"));
+      var themeActiveBadgeEl = document.getElementById("theme-active-badge");
+      var themePersistenceStatusEl = document.getElementById("theme-persistence-status");
+      var systemColorSchemeQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+      function showSettingsFeedback(msg) {
+        settingsFeedbackEl.textContent = msg;
+        settingsFeedbackEl.classList.remove("hidden");
+      }
+
+      function getSystemSchemeLabel() {
+        if (!systemColorSchemeQuery) return "감지 불가";
+        return systemColorSchemeQuery.matches ? "다크 모드" : "라이트 모드";
+      }
+
+      function syncThemeUI(activeThemeId) {
+        var resolved = normalizeThemeId(activeThemeId || getSavedTheme());
+        var meta = THEMES[resolved];
+        themeOptionBtns.forEach(function (btn) {
+          var isSelected = btn.getAttribute("data-theme-choice") === resolved;
+          btn.setAttribute("aria-pressed", isSelected ? "true" : "false");
+        });
+        if (themeActiveBadgeEl) {
+          themeActiveBadgeEl.textContent = meta.label + " 적용 중";
+        }
+        if (themePersistenceStatusEl) {
+          var persistedValue = safeGetItem(THEME_KEY);
+          var storageReady = persistedValue === resolved;
+          themePersistenceStatusEl.textContent =
+            "현재 적용 테마: " + meta.label +
+            " · 시스템 설정(" + getSystemSchemeLabel() + ")과 무관하게 유지" +
+            (storageReady ? " · localStorage 저장 완료" : " · 현재 세션 메모리 유지");
+        }
+      }
+
+      function applyTheme(themeId, shouldPersist) {
+        var resolved = normalizeThemeId(themeId);
+        var themeMeta = THEMES[resolved];
+        var root = document.documentElement;
+        root.setAttribute("data-theme", resolved);
+        root.style.colorScheme = "dark";
+        var themeMetaTag = document.querySelector('meta[name="theme-color"]');
+        if (themeMetaTag) {
+          themeMetaTag.setAttribute("content", themeMeta.themeColor);
+        }
+        if (shouldPersist !== false) {
+          safeSetItem(THEME_KEY, resolved);
+          var settings = loadSettings();
+          settings.theme = resolved;
+          saveSettings(settings);
+        }
+        syncThemeUI(resolved);
+        return resolved;
+      }
+
+      function syncSettingsUI() {
+        var settings = loadSettings();
+        settingHistoryEl.checked = settings.saveLocalHistory;
+        settingHibpEl.checked = settings.enableExternalHibp;
+        pwHibpToggle.checked = settings.enableExternalHibp;
+        var count = loadLocalHistory().length;
+        settingsHistoryCountEl.textContent = count + "건";
+        settingsClearBtn.disabled = count === 0;
+        syncThemeUI(settings.theme);
+      }
+
+      themeOptionBtns.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var chosen = btn.getAttribute("data-theme-choice");
+          var applied = applyTheme(chosen, true);
+          showSettingsFeedback("화면 테마(" + THEMES[applied].label + ")가 브라우저에 저장되었으며 시스템 설정과 무관하게 유지됩니다.");
+        });
+      });
+
+      if (systemColorSchemeQuery) {
+        var handleSystemThemeChange = function () {
+          /* Re-assert persisted dark navy theme regardless of OS light/dark changes */
+          applyTheme(getSavedTheme(), false);
+        };
+        if (typeof systemColorSchemeQuery.addEventListener === "function") {
+          systemColorSchemeQuery.addEventListener("change", handleSystemThemeChange);
+        } else if (typeof systemColorSchemeQuery.addListener === "function") {
+          systemColorSchemeQuery.addListener(handleSystemThemeChange);
+        }
+      }
+
+      window.addEventListener("storage", function (event) {
+        if (!event || event.key === THEME_KEY || event.key === SETTINGS_KEY || event.key === null) {
+          applyTheme(getSavedTheme(), false);
+          syncSettingsUI();
+        }
+      });
+
+      settingHistoryEl.addEventListener("change", function () {
+        var next = loadSettings();
+        next.saveLocalHistory = settingHistoryEl.checked;
+        saveSettings(next);
+        renderHomeHistory();
+        syncSettingsUI();
+        showSettingsFeedback("설정이 이 기기의 브라우저에 저장되었습니다.");
+      });
+
+      settingHibpEl.addEventListener("change", function () {
+        var next = loadSettings();
+        next.enableExternalHibp = settingHibpEl.checked;
+        saveSettings(next);
+        syncSettingsUI();
+        showSettingsFeedback("설정이 이 기기의 브라우저에 저장되었습니다.");
+      });
+
+      settingsClearBtn.addEventListener("click", function () {
+        clearLocalHistory();
+        showSettingsFeedback("브라우저에 저장된 로컬 검사 요약을 모두 삭제했습니다.");
+      });
+
+      /* ----- GitHub Export & Pure-JS ZIP Builder ----- */
+      var downloadZipBtn = document.getElementById("download-github-zip-btn");
+      var downloadHtmlBtn = document.getElementById("download-index-html-btn");
+      var downloadReadmeBtn = document.getElementById("download-readme-btn");
+      var exportFeedbackEl = document.getElementById("export-feedback");
+
+      function showExportFeedback(msg, isError) {
+        if (!exportFeedbackEl) return;
+        exportFeedbackEl.classList.remove("hidden", "banner-ok", "banner-warn");
+        exportFeedbackEl.classList.add(isError ? "banner-warn" : "banner-ok");
+        exportFeedbackEl.textContent = msg;
+      }
+
+      function encodeUtf8(str) {
+        if (typeof TextEncoder !== "undefined") {
+          return new TextEncoder().encode(str);
+        }
+        var utf8 = unescape(encodeURIComponent(str));
+        var arr = new Uint8Array(utf8.length);
+        for (var i = 0; i < utf8.length; i += 1) {
+          arr[i] = utf8.charCodeAt(i);
+        }
+        return arr;
+      }
+
+      var CRC32_TABLE = (function () {
+        var table = new Uint32Array(256);
+        for (var i = 0; i < 256; i += 1) {
+          var c = i;
+          for (var k = 0; k < 8; k += 1) {
+            c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+          }
+          table[i] = c >>> 0;
+        }
+        return table;
+      })();
+
+      function crc32Bytes(bytes) {
+        var crc = 0xffffffff;
+        for (var i = 0; i < bytes.length; i += 1) {
+          crc = CRC32_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+        }
+        return (crc ^ 0xffffffff) >>> 0;
+      }
+
+      function createZipBytes(files) {
+        var now = new Date();
+        var dosTime = ((now.getHours() & 0x1f) << 11) | ((now.getMinutes() & 0x3f) << 5) | ((now.getSeconds() >> 1) & 0x1f);
+        var dosDate = ((Math.max(1980, now.getFullYear()) - 1980) << 9) | (((now.getMonth() + 1) & 0x0f) << 5) | (now.getDate() & 0x1f);
+        var localParts = [];
+        var centralParts = [];
+        var offset = 0;
+
+        files.forEach(function (file) {
+          var nameBytes = encodeUtf8(file.name);
+          var dataBytes = typeof file.content === "string" ? encodeUtf8(file.content) : file.content;
+          var crc = crc32Bytes(dataBytes);
+
+          var lfh = new Uint8Array(30 + nameBytes.length);
+          var lv = new DataView(lfh.buffer);
+          lv.setUint32(0, 0x04034b50, true);
+          lv.setUint16(4, 20, true);
+          lv.setUint16(6, 0x0800, true);
+          lv.setUint16(8, 0, true);
+          lv.setUint16(10, dosTime, true);
+          lv.setUint16(12, dosDate, true);
+          lv.setUint32(14, crc, true);
+          lv.setUint32(18, dataBytes.length, true);
+          lv.setUint32(22, dataBytes.length, true);
+          lv.setUint16(26, nameBytes.length, true);
+          lv.setUint16(28, 0, true);
+          lfh.set(nameBytes, 30);
+
+          var cdh = new Uint8Array(46 + nameBytes.length);
+          var cv = new DataView(cdh.buffer);
+          cv.setUint32(0, 0x02014b50, true);
+          cv.setUint16(4, 20, true);
+          cv.setUint16(6, 20, true);
+          cv.setUint16(8, 0x0800, true);
+          cv.setUint16(10, 0, true);
+          cv.setUint16(12, dosTime, true);
+          cv.setUint16(14, dosDate, true);
+          cv.setUint32(16, crc, true);
+          cv.setUint32(20, dataBytes.length, true);
+          cv.setUint32(24, dataBytes.length, true);
+          cv.setUint16(28, nameBytes.length, true);
+          cv.setUint16(30, 0, true);
+          cv.setUint16(32, 0, true);
+          cv.setUint16(34, 0, true);
+          cv.setUint16(36, 0, true);
+          cv.setUint32(38, 0, true);
+          cv.setUint32(42, offset, true);
+          cdh.set(nameBytes, 46);
+
+          localParts.push(lfh, dataBytes);
+          centralParts.push(cdh);
+          offset += lfh.length + dataBytes.length;
+        });
+
+        var centralSize = centralParts.reduce(function (sum, part) { return sum + part.length; }, 0);
+        var eocd = new Uint8Array(22);
+        var ev = new DataView(eocd.buffer);
+        ev.setUint32(0, 0x06054b50, true);
+        ev.setUint16(4, 0, true);
+        ev.setUint16(6, 0, true);
+        ev.setUint16(8, files.length, true);
+        ev.setUint16(10, files.length, true);
+        ev.setUint32(12, centralSize, true);
+        ev.setUint32(16, offset, true);
+        ev.setUint16(20, 0, true);
+
+        var totalLen = offset + centralSize + eocd.length;
+        var out = new Uint8Array(totalLen);
+        var pos = 0;
+        localParts.forEach(function (part) { out.set(part, pos); pos += part.length; });
+        centralParts.forEach(function (part) { out.set(part, pos); pos += part.length; });
+        out.set(eocd, pos);
+        return out;
+      }
+
+      function buildReadmeContent() {
+        return [
+          "# LeakGuard — 정보보안 점검 웹 애플리케이션",
+          "",
+          "회원가입이나 서버 설치 없이 단일 `index.html` 파일만으로 실행되는 한국어 정보보안 점검 도구입니다.",
+          "",
+          "## 주요 기능",
+          "1. **의심스러운 URL 정적 구조 검사**: HTTPS 여부, IP 직접 연결, Punycode(`xn--`), `@` 인증정보 혼동, 단축 URL, 주요 브랜드 사칭 패턴을 링크 접속 없이 브라우저 내에서 분석합니다.",
+          "2. **비밀번호 유출 및 안전성 검사**: 브라우저 Web Crypto API로 SHA-1 해시를 계산한 뒤 앞 5자리만 Have I Been Pwned Pwned Passwords Range API로 전송해 유출 여부를 대조합니다(`k-Anonymity`).",
+          "3. **피싱·스미싱 메시지 규칙 검사**: API 키 없이 브라우저 내 정규식·키워드·포함 URL 구조 규칙으로 사칭 및 긴급 압박 문구를 탐지합니다.",
+          "4. **다크 네이비 테마 로컬 유지**: `localStorage`에 화면 테마를 저장해 OS 라이트/다크 설정이 변경되어도 다크 네이비 UI를 일관되게 유지합니다.",
+          "",
+          "## 개인정보 보호 및 기능 범위 안내",
+          "- 원본 비밀번호와 전체 SHA-1 해시는 외부로 전송하거나 저장하지 않습니다.",
+          "- Google Safe Browsing 및 Gemini AI는 API 키 보호를 위한 백엔드가 없는 정적 HTML 환경이므로 연동하지 않았으며 UI에서 **조회 불가(미연동)**로 명확히 구분 표시합니다.",
+          "- 모든 검사는 보조 진단 도구이며 100% 안전을 보장하지 않습니다.",
+          "",
+          "## 실행 및 GitHub Pages 배포 방법",
+          "- **로컬 실행**: `index.html` 파일을 브라우저로 직접 엽니다.",
+          "- **GitHub Pages 배포**: 저장소 루트에 `index.html`과 `README.md`를 업로드한 뒤 **Settings → Pages → Build and deployment → Branch (`main` / `/(root)`)**를 선택하면 즉시 웹 URL로 호스팅됩니다.",
+          ""
+        ].join("\n");
+      }
+
+      function buildGitignoreContent() {
+        return [
+          "# OS / Editor",
+          ".DS_Store",
+          "Thumbs.db",
+          "*.swp",
+          "",
+          "# Node / Env (optional)",
+          "node_modules/",
+          ".env",
+          ".env.*",
+          ""
+        ].join("\n");
+      }
+
+      function buildPristineIndexHtml() {
+        var root = document.documentElement;
+        var clone = root.cloneNode(true);
+        clone.removeAttribute("data-theme");
+        clone.removeAttribute("style");
+
+        var metaTheme = clone.querySelector('meta[name="theme-color"]');
+        if (metaTheme) metaTheme.setAttribute("content", "#07111E");
+
+        VALID_VIEWS.forEach(function (v) {
+          var sec = clone.querySelector("#view-" + v);
+          if (sec) sec.classList.toggle("active", v === "home");
+        });
+
+        clone.querySelectorAll("[data-nav]").forEach(function (el) {
+          if (el.classList.contains("nav-btn") || el.classList.contains("mobile-tab")) {
+            if (el.getAttribute("data-nav") === "home") {
+              el.setAttribute("aria-current", "page");
+            } else {
+              el.removeAttribute("aria-current");
+            }
+          }
+        });
+
+        var resetHiddenIds = [
+          "home-history-card", "url-reset-btn", "pw-reset-btn", "pw-crypto-warning",
+          "phishing-reset-btn", "phishing-validation-msg", "settings-feedback", "export-feedback"
+        ];
+        resetHiddenIds.forEach(function (id) {
+          var el = clone.querySelector("#" + id);
+          if (el) el.classList.add("hidden");
+        });
+
+        var resetEmptyIds = [
+          "home-history-list", "url-result-area", "pw-result-area",
+          "phishing-result-area", "phishing-validation-msg", "settings-feedback", "export-feedback"
+        ];
+        resetEmptyIds.forEach(function (id) {
+          var el = clone.querySelector("#" + id);
+          if (el) el.innerHTML = "";
+        });
+
+        var urlIn = clone.querySelector("#url-input");
+        if (urlIn) { urlIn.value = ""; urlIn.removeAttribute("value"); }
+        var urlCount = clone.querySelector("#url-char-count");
+        if (urlCount) urlCount.textContent = "0 / 2,048자";
+
+        var pwIn = clone.querySelector("#pw-input");
+        if (pwIn) {
+          pwIn.value = "";
+          pwIn.removeAttribute("value");
+          pwIn.setAttribute("type", "password");
+        }
+        var eyeOpen = clone.querySelector("#pw-eye-open");
+        var eyeOff = clone.querySelector("#pw-eye-off");
+        if (eyeOpen) eyeOpen.classList.remove("hidden");
+        if (eyeOff) eyeOff.classList.add("hidden");
+        var pwBtn = clone.querySelector("#pw-submit-btn");
+        if (pwBtn) { pwBtn.disabled = true; pwBtn.setAttribute("disabled", ""); }
+        var pwHibp = clone.querySelector("#pw-hibp-toggle");
+        if (pwHibp) { pwHibp.checked = true; pwHibp.setAttribute("checked", ""); }
+
+        var phSender = clone.querySelector("#phishing-sender");
+        if (phSender) { phSender.value = ""; phSender.removeAttribute("value"); }
+        var phMsg = clone.querySelector("#phishing-message");
+        if (phMsg) { phMsg.value = ""; phMsg.textContent = ""; }
+        var phCount = clone.querySelector("#phishing-char-count");
+        if (phCount) phCount.textContent = "0자";
+
+        var setHistory = clone.querySelector("#setting-history");
+        if (setHistory) { setHistory.checked = false; setHistory.removeAttribute("checked"); }
+        var setHibp = clone.querySelector("#setting-hibp");
+        if (setHibp) { setHibp.checked = true; setHibp.setAttribute("checked", ""); }
+        var histCount = clone.querySelector("#settings-history-count");
+        if (histCount) histCount.textContent = "0건";
+        var clearHistBtn = clone.querySelector("#settings-clear-history-btn");
+        if (clearHistBtn) { clearHistBtn.disabled = true; clearHistBtn.setAttribute("disabled", ""); }
+
+        clone.querySelectorAll("[data-theme-choice]").forEach(function (btn) {
+          btn.setAttribute("aria-pressed", btn.getAttribute("data-theme-choice") === "dark-navy" ? "true" : "false");
+        });
+        var badge = clone.querySelector("#theme-active-badge");
+        if (badge) badge.textContent = "다크 네이비 유지 중";
+        var status = clone.querySelector("#theme-persistence-status");
+        if (status) status.textContent = "저장 상태 확인 중...";
+
+        return "<!doctype html>\n" + clone.outerHTML + "\n";
+      }
+
+      function triggerDownload(filename, content, mimeType) {
+        if (typeof Blob === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+          showExportFeedback("현재 브라우저 환경에서는 파일 다운로드 Blob API를 지원하지 않습니다.", true);
+          return false;
+        }
+        var blob = new Blob([content], { type: mimeType });
+        var objectUrl = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = filename;
+        link.rel = "noopener";
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(function () {
+          if (link.parentNode) link.parentNode.removeChild(link);
+          URL.revokeObjectURL(objectUrl);
+        }, 1200);
+        return true;
+      }
+
+      if (downloadZipBtn) {
+        downloadZipBtn.addEventListener("click", function () {
+          try {
+            var zipBytes = createZipBytes([
+              { name: "index.html", content: buildPristineIndexHtml() },
+              { name: "README.md", content: buildReadmeContent() },
+              { name: ".gitignore", content: buildGitignoreContent() }
+            ]);
+            if (triggerDownload("leakguard-github.zip", zipBytes, "application/zip")) {
+              showExportFeedback("leakguard-github.zip (index.html, README.md, .gitignore 포함) 다운로드를 시작했습니다. 압축 해제 후 GitHub에 업로드하세요.");
+            }
+          } catch (err) {
+            showExportFeedback("ZIP 패키지 생성 중 오류가 발생했습니다. index.html 단독 다운로드를 이용해 주세요.", true);
+          }
+        });
+      }
+
+      if (downloadHtmlBtn) {
+        downloadHtmlBtn.addEventListener("click", function () {
+          try {
+            if (triggerDownload("index.html", buildPristineIndexHtml(), "text/html;charset=utf-8")) {
+              showExportFeedback("초기화된 단일 파일 index.html 다운로드를 시작했습니다. GitHub 저장소 루트에 바로 업로드할 수 있습니다.");
+            }
+          } catch (err) {
+            showExportFeedback("index.html 내보내기 중 오류가 발생했습니다.", true);
+          }
+        });
+      }
+
+      if (downloadReadmeBtn) {
+        downloadReadmeBtn.addEventListener("click", function () {
+          if (triggerDownload("README.md", buildReadmeContent(), "text/markdown;charset=utf-8")) {
+            showExportFeedback("GitHub 저장소 안내 문서 README.md 다운로드를 시작했습니다.");
+          }
+        });
+      }
+
+      /* ----- Init ----- */
+      applyTheme(getSavedTheme(), true);
+      syncSettingsUI();
+      renderHomeHistory();
+      var initialHash = (window.location.hash || "").replace(/^#/, "");
+      if (VALID_VIEWS.indexOf(initialHash) !== -1) {
+        navigateTo(initialHash, false);
+      }
+    })();
+  </script>
+
+
+</body><whale-quicksearch translate="no" style="visibility: visible;"></whale-quicksearch></html>
